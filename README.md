@@ -1,72 +1,139 @@
-
 # brightspaceR <img src="man/figures/logo.svg" align="right" height="139" alt="brightspaceR logo" />
 
 <!-- badges: start -->
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-brightspaceR connects R to the [D2L Brightspace Data Sets (BDS) API](https://docs.valence.desire2learn.com/). Authenticate via OAuth2, download datasets as tidy data frames with proper column types, and join them using convenience functions that know the foreign key relationships.
+**Full documentation: <https://pcstrategyandopsco.github.io/brightspaceR/>**
 
-It also ships an **MCP server** that lets AI assistants (Claude Desktop, Claude Code) query your Brightspace data conversationally -- writing R code, running aggregations, and generating interactive charts without you touching code.
+## The problem
 
-## Documentation
+Brightspace Data Sets (BDS) give you access to the raw data behind your LMS --
+users, enrollments, grades, content activity, quiz attempts, discussion posts --
+but working with them is tedious. You authenticate via OAuth2, hit a paginated
+API to find available extracts, download ZIP files, unzip CSVs, figure out which
+columns are dates vs strings vs booleans, convert PascalCase names to something
+R-friendly, and then manually join tables on the right ID columns. Every time.
 
-**Full documentation and articles: <https://pcstrategyandopsco.github.io/brightspaceR/>**
+brightspaceR does all of that in one line:
+
+```r
+users <- bs_get_dataset("Users")
+```
+
+You get back a tidy tibble with proper column types, snake_case names, and
+dates parsed as POSIXct. The package knows the schemas for ~20 common BDS
+datasets and will intelligently coerce types even for datasets it hasn't seen
+before.
+
+## What it does
+
+**Authenticate** once via OAuth2. Tokens are cached to disk and refreshed
+automatically -- no re-authentication on every script run.
+
+```r
+library(brightspaceR)
+bs_auth()
+```
+
+**Discover** what's available. List all datasets, search by keyword, inspect
+schemas:
+
+```r
+bs_list_datasets()
+bs_get_schema("grade_results")
+```
+
+**Download** any dataset as a typed tibble:
+
+```r
+users       <- bs_get_dataset("Users")
+enrollments <- bs_get_dataset("User Enrollments")
+grades      <- bs_get_dataset("Grade Results")
+```
+
+**Join** related datasets. BDS tables are normalized -- users, enrollments,
+grades, and org units live in separate tables linked by ID columns. brightspaceR
+knows the foreign key relationships:
+
+```r
+# Smart join -- auto-detects shared key columns
+bs_join(users, enrollments)
+
+# Or use named joins for explicit, self-documenting code
+enrollments |>
+  bs_join_enrollments_roles(bs_get_dataset("Role Details")) |>
+  bs_join_enrollments_orgunits(bs_get_dataset("Org Units"))
+```
+
+**Chain joins** to build complete analytical datasets in one pipeline:
+
+```r
+grade_report <- bs_get_dataset("User Enrollments") |>
+  bs_join_enrollments_grades(bs_get_dataset("Grade Results")) |>
+  bs_join_grades_objects(bs_get_dataset("Grade Objects"))
+```
+
+**Analyse** with standard dplyr -- enrollment counts, grade distributions,
+active user reports, completion rates:
+
+```r
+library(dplyr)
+
+# Enrollment counts by role
+enrollments |>
+  bs_join_enrollments_roles(bs_get_dataset("Role Details")) |>
+  count(role_name, sort = TRUE)
+
+# Average grade per course
+grades |>
+  filter(!is.na(points_numerator)) |>
+  group_by(org_unit_id) |>
+  summarise(mean_grade = mean(points_numerator, na.rm = TRUE))
+
+# Active users in the last 90 days
+bs_get_dataset("Users") |>
+  filter(last_accessed >= Sys.time() - as.difftime(90, units = "days")) |>
+  nrow()
+```
 
 ## Installation
 
 ```r
-# Install from GitHub
 # install.packages("pak")
 pak::pak("pcstrategyandopsco/brightspaceR")
 ```
 
-## Quick start
+You'll need to register an OAuth2 application in your Brightspace instance
+before using the package. The
+[setup guide](https://pcstrategyandopsco.github.io/brightspaceR/articles/setup.html)
+walks through every step: app registration, scopes, redirect URIs, config file,
+and troubleshooting.
 
-```r
-library(brightspaceR)
+## MCP server for AI-assisted analytics
 
-# Authenticate (opens browser for OAuth2 flow)
-bs_auth()
+brightspaceR includes an MCP (Model Context Protocol) server that lets AI
+assistants query your Brightspace data directly. Instead of you writing R code,
+you describe what you want in plain language. The assistant discovers datasets,
+writes the R code to aggregate and join them, and returns the results -- text
+summaries, tables, and interactive Chart.js visualisations.
 
-# List available datasets
-bs_list_datasets()
+Example conversation:
 
-# Download a dataset as a tibble
-users <- bs_get_dataset("Users")
-enrollments <- bs_get_dataset("User Enrollments")
+> **You:** How are students performing in STAT101?
+>
+> The assistant finds the Grade Results dataset, filters to STAT101, and returns
+> summary statistics and an interactive grade distribution chart -- all without
+> you writing a line of code.
 
-# Join related datasets (foreign keys handled automatically)
-bs_join(users, enrollments)
+The server exposes 7 tools: dataset discovery, column-level statistics,
+filtered/grouped summaries, and a full R execution environment with a persistent
+workspace. It runs locally, uses your existing OAuth2 credentials, and produces
+self-contained HTML charts you can share with colleagues.
 
-# Or use named convenience joins
-enrollments |>
-  bs_join_enrollments_roles(bs_get_dataset("Role Details")) |>
-  dplyr::count(role_name, sort = TRUE)
-```
+### Setup
 
-## Features
-
-- **OAuth2 authentication** with automatic token caching and refresh
-- **Dataset discovery** -- list, search, and describe all available BDS datasets
-- **Typed downloads** -- columns are parsed to proper R types (dates, numerics, logicals) via built-in schemas
-- **Smart joins** -- `bs_join()` automatically detects shared key columns; seven named join functions cover the most common combinations
-- **MCP server** -- lets Claude Desktop or Claude Code query your LMS data conversationally
-
-## Articles
-
-| Topic | Description |
-|-------|-------------|
-| [Setup & Configuration](https://pcstrategyandopsco.github.io/brightspaceR/articles/setup.html) | OAuth2 setup, config.yml, environment variables |
-| [Getting Started](https://pcstrategyandopsco.github.io/brightspaceR/articles/getting-started.html) | First steps with datasets and joins |
-| [Convenience Functions](https://pcstrategyandopsco.github.io/brightspaceR/articles/convenience-functions.html) | All join functions, schemas, and common patterns |
-| [Interactive Dashboard](https://pcstrategyandopsco.github.io/brightspaceR/articles/interactive-dashboard.html) | Build a self-contained HTML dashboard with R Markdown and Chart.js |
-| [Shiny App](https://pcstrategyandopsco.github.io/brightspaceR/articles/shiny-app.html) | Full Shiny app with filters, KPIs, and charts |
-| [MCP Server Design](https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-server-design.html) | Architecture and tool reference for the MCP server |
-
-## MCP server
-
-The MCP server gives AI assistants direct access to your Brightspace data. Claude discovers datasets, writes R code to aggregate and join them, and returns compact results -- text summaries and interactive Chart.js visualisations.
+Add this to your Claude Desktop configuration:
 
 ```json
 {
@@ -80,7 +147,36 @@ The MCP server gives AI assistants direct access to your Brightspace data. Claud
 }
 ```
 
-See the [MCP Server Design](https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-server-design.html) article for the full tool reference and architecture details.
+See the [MCP Server Design](https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-server-design.html) article for architecture details, the full tool reference, and example analysis workflows.
+
+## Building dashboards and apps
+
+The package is designed to support reporting workflows beyond one-off scripts.
+The documentation includes complete, working examples:
+
+- [**Interactive Dashboard**](https://pcstrategyandopsco.github.io/brightspaceR/articles/interactive-dashboard.html) --
+  Build a self-contained HTML dashboard using R Markdown and Chart.js. knitr
+  inline R expressions inject aggregated data directly into JavaScript chart
+  definitions. The result is a single HTML file you can open in any browser or
+  share with colleagues -- no R or Shiny required to view it. Supports
+  parameterised reports for different date ranges or semesters.
+
+- [**Shiny App**](https://pcstrategyandopsco.github.io/brightspaceR/articles/shiny-app.html) --
+  A complete Shiny application with sidebar filters (role, course, date range),
+  KPI cards, four ggplot2 charts, and a DT data table. Includes sections on
+  adding plotly interactivity, download buttons, scheduled data refresh, and
+  deploying to Posit Connect.
+
+## Articles
+
+| | |
+|---|---|
+| [OAuth2 Setup](https://pcstrategyandopsco.github.io/brightspaceR/articles/setup.html) | App registration, credentials, config file, troubleshooting |
+| [Getting Started](https://pcstrategyandopsco.github.io/brightspaceR/articles/getting-started.html) | First dataset download, joins, schemas, column types |
+| [Convenience Functions](https://pcstrategyandopsco.github.io/brightspaceR/articles/convenience-functions.html) | All 7 join functions, schema registry, common analytical patterns |
+| [Interactive Dashboard](https://pcstrategyandopsco.github.io/brightspaceR/articles/interactive-dashboard.html) | R Markdown + Chart.js, parameterised reports |
+| [Shiny App](https://pcstrategyandopsco.github.io/brightspaceR/articles/shiny-app.html) | Full app with filters, charts, data tables, deployment |
+| [MCP Server Design](https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-server-design.html) | Architecture, 7-tool reference, analysis types, conversation flows |
 
 ## License
 

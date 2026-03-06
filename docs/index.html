@@ -18,7 +18,7 @@
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Access D2L Brightspace Data Sets via the BDS API">
 <meta name="description" content="Connect to the D2L Brightspace Data Sets (BDS) API via OAuth2, download all available datasets as tidy data frames with proper types, and join them using convenience functions that know the foreign key relationships.">
 <meta property="og:description" content="Connect to the D2L Brightspace Data Sets (BDS) API via OAuth2, download all available datasets as tidy data frames with proper types, and join them using convenience functions that know the foreign key relationships.">
-<meta property="og:image" content="https://peeyooshchandra.github.io/brightspaceR/logo.svg">
+<meta property="og:image" content="https://pcstrategyandopsco.github.io/brightspaceR/logo.svg">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -52,7 +52,7 @@
 <li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json">
 </form></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/peeyooshchandra/brightspaceR"><span class="fa fa-github"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/pcstrategyandopsco/brightspaceR"><span class="fa fa-github"></span></a></li>
       </ul>
 </div>
 
@@ -60,13 +60,163 @@
   </div>
 </nav><div class="container template-home">
 <div class="row">
-  <main id="main" class="col-md-9">
-Connect to the D2L Brightspace Data Sets (BDS) API via OAuth2, download all available datasets as tidy data frames with proper types, and join them using convenience functions that know the foreign key relationships.
+  <main id="main" class="col-md-9"><div class="section level1">
+<div class="page-header">
+<img src="logo.svg" class="logo" alt=""><h1 id="brightspacer-">brightspaceR <a class="anchor" aria-label="anchor" href="#brightspacer-"></a>
+</h1>
+</div>
+<!-- badges: start -->
+
+<p><strong>Full documentation: <a href="https://pcstrategyandopsco.github.io/brightspaceR/" class="uri">https://pcstrategyandopsco.github.io/brightspaceR/</a></strong></p>
+<div class="section level2">
+<h2 id="the-problem">The problem<a class="anchor" aria-label="anchor" href="#the-problem"></a>
+</h2>
+<p>Brightspace Data Sets (BDS) give you access to the raw data behind your LMS – users, enrollments, grades, content activity, quiz attempts, discussion posts – but working with them is tedious. You authenticate via OAuth2, hit a paginated API to find available extracts, download ZIP files, unzip CSVs, figure out which columns are dates vs strings vs booleans, convert PascalCase names to something R-friendly, and then manually join tables on the right ID columns. Every time.</p>
+<p>brightspaceR does all of that in one line:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">users</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bs_get_dataset.html">bs_get_dataset</a></span><span class="op">(</span><span class="st">"Users"</span><span class="op">)</span></span></code></pre></div>
+<p>You get back a tidy tibble with proper column types, snake_case names, and dates parsed as POSIXct. The package knows the schemas for ~20 common BDS datasets and will intelligently coerce types even for datasets it hasn’t seen before.</p>
+</div>
+<div class="section level2">
+<h2 id="what-it-does">What it does<a class="anchor" aria-label="anchor" href="#what-it-does"></a>
+</h2>
+<p><strong>Authenticate</strong> once via OAuth2. Tokens are cached to disk and refreshed automatically – no re-authentication on every script run.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://peeyooshchandra.github.io/brightspaceR/" class="external-link">brightspaceR</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/bs_auth.html">bs_auth</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p><strong>Discover</strong> what’s available. List all datasets, search by keyword, inspect schemas:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/bs_list_datasets.html">bs_list_datasets</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/bs_get_schema.html">bs_get_schema</a></span><span class="op">(</span><span class="st">"grade_results"</span><span class="op">)</span></span></code></pre></div>
+<p><strong>Download</strong> any dataset as a typed tibble:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">users</span>       <span class="op">&lt;-</span> <span class="fu"><a href="reference/bs_get_dataset.html">bs_get_dataset</a></span><span class="op">(</span><span class="st">"Users"</span><span class="op">)</span></span>
+<span><span class="va">enrollments</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bs_get_dataset.html">bs_get_dataset</a></span><span class="op">(</span><span class="st">"User Enrollments"</span><span class="op">)</span></span>
+<span><span class="va">grades</span>      <span class="op">&lt;-</span> <span class="fu"><a href="reference/bs_get_dataset.html">bs_get_dataset</a></span><span class="op">(</span><span class="st">"Grade Results"</span><span class="op">)</span></span></code></pre></div>
+<p><strong>Join</strong> related datasets. BDS tables are normalized – users, enrollments, grades, and org units live in separate tables linked by ID columns. brightspaceR knows the foreign key relationships:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Smart join -- auto-detects shared key columns</span></span>
+<span><span class="fu"><a href="reference/bs_join.html">bs_join</a></span><span class="op">(</span><span class="va">users</span>, <span class="va">enrollments</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Or use named joins for explicit, self-documenting code</span></span>
+<span><span class="va">enrollments</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/bs_join_enrollments_roles.html">bs_join_enrollments_roles</a></span><span class="op">(</span><span class="fu"><a href="reference/bs_get_dataset.html">bs_get_dataset</a></span><span class="op">(</span><span class="st">"Role Details"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/bs_join_enrollments_orgunits.html">bs_join_enrollments_orgunits</a></span><span class="op">(</span><span class="fu"><a href="reference/bs_get_dataset.html">bs_get_dataset</a></span><span class="op">(</span><span class="st">"Org Units"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p><strong>Chain joins</strong> to build complete analytical datasets in one pipeline:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">grade_report</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bs_get_dataset.html">bs_get_dataset</a></span><span class="op">(</span><span class="st">"User Enrollments"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/bs_join_enrollments_grades.html">bs_join_enrollments_grades</a></span><span class="op">(</span><span class="fu"><a href="reference/bs_get_dataset.html">bs_get_dataset</a></span><span class="op">(</span><span class="st">"Grade Results"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/bs_join_grades_objects.html">bs_join_grades_objects</a></span><span class="op">(</span><span class="fu"><a href="reference/bs_get_dataset.html">bs_get_dataset</a></span><span class="op">(</span><span class="st">"Grade Objects"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p><strong>Analyse</strong> with standard dplyr – enrollment counts, grade distributions, active user reports, completion rates:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Enrollment counts by role</span></span>
+<span><span class="va">enrollments</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/bs_join_enrollments_roles.html">bs_join_enrollments_roles</a></span><span class="op">(</span><span class="fu"><a href="reference/bs_get_dataset.html">bs_get_dataset</a></span><span class="op">(</span><span class="st">"Role Details"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">role_name</span>, sort <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Average grade per course</span></span>
+<span><span class="va">grades</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">points_numerator</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">org_unit_id</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise</a></span><span class="op">(</span>mean_grade <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">points_numerator</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Active users in the last 90 days</span></span>
+<span><span class="fu"><a href="reference/bs_get_dataset.html">bs_get_dataset</a></span><span class="op">(</span><span class="st">"Users"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">last_accessed</span> <span class="op">&gt;=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/difftime.html" class="external-link">as.difftime</a></span><span class="op">(</span><span class="fl">90</span>, units <span class="op">=</span> <span class="st">"days"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
+</h2>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># install.packages("pak")</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu">pak</span><span class="op">(</span><span class="st">"pcstrategyandopsco/brightspaceR"</span><span class="op">)</span></span></code></pre></div>
+<p>You’ll need to register an OAuth2 application in your Brightspace instance before using the package. The <a href="https://pcstrategyandopsco.github.io/brightspaceR/articles/setup.html">setup guide</a> walks through every step: app registration, scopes, redirect URIs, config file, and troubleshooting.</p>
+</div>
+<div class="section level2">
+<h2 id="mcp-server-for-ai-assisted-analytics">MCP server for AI-assisted analytics<a class="anchor" aria-label="anchor" href="#mcp-server-for-ai-assisted-analytics"></a>
+</h2>
+<p>brightspaceR includes an MCP (Model Context Protocol) server that lets AI assistants query your Brightspace data directly. Instead of you writing R code, you describe what you want in plain language. The assistant discovers datasets, writes the R code to aggregate and join them, and returns the results – text summaries, tables, and interactive Chart.js visualisations.</p>
+<p>Example conversation:</p>
+<blockquote>
+<p><strong>You:</strong> How are students performing in STAT101?</p>
+<p>The assistant finds the Grade Results dataset, filters to STAT101, and returns summary statistics and an interactive grade distribution chart – all without you writing a line of code.</p>
+</blockquote>
+<p>The server exposes 7 tools: dataset discovery, column-level statistics, filtered/grouped summaries, and a full R execution environment with a persistent workspace. It runs locally, uses your existing OAuth2 credentials, and produces self-contained HTML charts you can share with colleagues.</p>
+<div class="section level3">
+<h3 id="setup">Setup<a class="anchor" aria-label="anchor" href="#setup"></a>
+</h3>
+<p>Add this to your Claude Desktop configuration:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>  <span class="dt">"mcpServers"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>    <span class="dt">"brightspaceR"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>      <span class="dt">"command"</span><span class="fu">:</span> <span class="st">"Rscript"</span><span class="fu">,</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>      <span class="dt">"args"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"&lt;path-to&gt;/brightspaceR/inst/mcp/server.R"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>      <span class="dt">"cwd"</span><span class="fu">:</span> <span class="st">"&lt;path-to&gt;/brightspaceR"</span></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>See the <a href="https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-server-design.html">MCP Server Design</a> article for architecture details, the full tool reference, and example analysis workflows.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="building-dashboards-and-apps">Building dashboards and apps<a class="anchor" aria-label="anchor" href="#building-dashboards-and-apps"></a>
+</h2>
+<p>The package is designed to support reporting workflows beyond one-off scripts. The documentation includes complete, working examples:</p>
+<ul>
+<li><p><a href="https://pcstrategyandopsco.github.io/brightspaceR/articles/interactive-dashboard.html"><strong>Interactive Dashboard</strong></a> – Build a self-contained HTML dashboard using R Markdown and Chart.js. knitr inline R expressions inject aggregated data directly into JavaScript chart definitions. The result is a single HTML file you can open in any browser or share with colleagues – no R or Shiny required to view it. Supports parameterised reports for different date ranges or semesters.</p></li>
+<li><p><a href="https://pcstrategyandopsco.github.io/brightspaceR/articles/shiny-app.html"><strong>Shiny App</strong></a> – A complete Shiny application with sidebar filters (role, course, date range), KPI cards, four ggplot2 charts, and a DT data table. Includes sections on adding plotly interactivity, download buttons, scheduled data refresh, and deploying to Posit Connect.</p></li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="articles">Articles<a class="anchor" aria-label="anchor" href="#articles"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<tbody>
+<tr>
+<td><a href="https://pcstrategyandopsco.github.io/brightspaceR/articles/setup.html">OAuth2 Setup</a></td>
+<td>App registration, credentials, config file, troubleshooting</td>
+</tr>
+<tr>
+<td><a href="https://pcstrategyandopsco.github.io/brightspaceR/articles/getting-started.html">Getting Started</a></td>
+<td>First dataset download, joins, schemas, column types</td>
+</tr>
+<tr>
+<td><a href="https://pcstrategyandopsco.github.io/brightspaceR/articles/convenience-functions.html">Convenience Functions</a></td>
+<td>All 7 join functions, schema registry, common analytical patterns</td>
+</tr>
+<tr>
+<td><a href="https://pcstrategyandopsco.github.io/brightspaceR/articles/interactive-dashboard.html">Interactive Dashboard</a></td>
+<td>R Markdown + Chart.js, parameterised reports</td>
+</tr>
+<tr>
+<td><a href="https://pcstrategyandopsco.github.io/brightspaceR/articles/shiny-app.html">Shiny App</a></td>
+<td>Full app with filters, charts, data tables, deployment</td>
+</tr>
+<tr>
+<td><a href="https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-server-design.html">MCP Server Design</a></td>
+<td>Architecture, 7-tool reference, analysis types, conversation flows</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level2">
+<h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
+</h2>
+<p>MIT</p>
+</div>
+</div>
   </main><aside class="col-md-3"><div class="links">
 <h2 data-toc-skip>Links</h2>
 <ul class="list-unstyled">
-<li><a href="https://github.com/peeyooshchandra/brightspaceR/" class="external-link">Browse source code</a></li>
-<li><a href="https://github.com/peeyooshchandra/brightspaceR/issues" class="external-link">Report a bug</a></li>
+<li><a href="https://github.com/pcstrategyandopsco/brightspaceR/" class="external-link">Browse source code</a></li>
+<li><a href="https://github.com/pcstrategyandopsco/brightspaceR/issues" class="external-link">Report a bug</a></li>
 </ul>
 </div>
 
@@ -93,7 +243,12 @@ Connect to the D2L Brightspace Data Sets (BDS) API via OAuth2, download all avai
 </ul>
 </div>
 
-
+<div class="dev-status">
+<h2 data-toc-skip>Dev status</h2>
+<ul class="list-unstyled">
+<li><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental" class="external-link"><img src="https://img.shields.io/badge/lifecycle-experimental-orange.svg" alt="Lifecycle: experimental"></a></li>
+</ul>
+</div>
 
   </aside>
 </div>
