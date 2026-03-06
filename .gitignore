@@ -1,0 +1,14 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+inst/doc
+config.yml
+
+# Generated output
+brightspaceR_output/
+Rplots.pdf
+*.rds
+
+# Review staging area
+for_review/

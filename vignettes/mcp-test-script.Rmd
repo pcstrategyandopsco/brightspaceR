@@ -1,0 +1,231 @@
+---
+title: "MCP Server Test Script"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{MCP Server Test Script}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+After restarting the MCP server (or restarting Claude Desktop), paste each prompt below into Claude Desktop one at a time. Expected behavior is described after each prompt.
+
+## Test 1: Auth check
+
+**Prompt:**
+
+> Are you connected to Brightspace?
+
+**Expected:** Claude calls `auth_status`. Response shows `"authenticated": true`. If false, run `bs_auth()` in an interactive R session first.
+
+## Test 2: Dataset discovery
+
+**Prompt:**
+
+> What datasets are available? List them for me.
+
+**Expected:** Claude calls `list_datasets`. You see a list of all BDS dataset names with descriptions. Should be dozens of datasets.
+
+## Test 3: Keyword search
+
+**Prompt:**
+
+> Find any datasets related to grades.
+
+**Expected:** Claude calls `search_datasets` with keyword "grade" (or similar). Returns a filtered list -- should include "Grade Results" and possibly others.
+
+## Test 4: Dataset description with column stats
+
+**Prompt:**
+
+> Describe the Users dataset. What columns does it have?
+
+**Expected:** Claude calls `describe_dataset` with name "Users". Response should show:
+
+- Row count and column count
+- Per-column summaries (not sample rows):
+  - Numeric columns show min/max/mean
+  - Character columns show n_unique and top 3 values
+  - Date columns show min/max date range
+- Footer suggesting `execute_r`
+
+## Test 5: Simple execute_r -- scalar result
+
+**Prompt:**
+
+> How many users are there in total?
+
+**Expected:** Claude calls `execute_r` with something like:
+```r
+nrow(bs_get_dataset("Users"))
+```
+Returns a single number. No raw data transfer.
+
+## Test 6: execute_r -- data frame result
+
+**Prompt:**
+
+> Show me the top 10 most common role names in the User Enrollments dataset.
+
+**Expected:** Claude calls `execute_r` with a dplyr pipeline like:
+```r
+bs_get_dataset("User Enrollments") %>%
+  count(role_name, sort = TRUE) %>%
+  head(10)
+```
+Returns a compact text table (not JSON, not thousands of rows).
+
+## Test 7: execute_r -- persistent workspace
+
+**Prompt:**
+
+> Now filter those enrollments to just Students and tell me how many there are.
+
+**Expected:** Claude uses variables from the previous call (or re-loads and filters). The key test is that Claude can reference or build on prior work. Should return a count.
+
+## Test 8: Interactive Chart.js chart
+
+**Prompt:**
+
+> Create an interactive bar chart showing enrollment counts by role.
+
+**Expected:** Claude should:
+
+1. Call `execute_r` to compute the counts (e.g., `count(role_name, sort = TRUE)`)
+2. Build a self-contained HTML string with Chart.js from CDN
+3. Write it with `writeLines()` to the output directory
+4. Call `browseURL()` to open it
+
+The response should include the HTML file path. Opening it shows an interactive bar chart with tooltips and hover effects.
+
+## Test 8b: Static ggplot fallback
+
+**Prompt:**
+
+> Use ggplot to create a bar chart of enrollment counts by role. Return the plot object.
+
+**Expected:** Claude calls `execute_r` with ggplot code (no `ggsave()`). The server detects the ggplot object and saves it as PNG + HTML viewer. Response should include:
+
+1. A text line like "Plot saved: Enrollments by Role (1 layer)"
+2. File paths for the PNG and HTML viewer in the output directory
+
+This tests the static chart fallback for when Chart.js is not suitable.
+
+## Test 9: get_data_summary -- basic
+
+**Prompt:**
+
+> Give me a quick summary of the Grade Results dataset.
+
+**Expected:** Claude calls `get_data_summary` with dataset "Grade Results". Returns row/column counts and per-column statistics. Footer suggests `execute_r` for custom analysis.
+
+## Test 10: get_data_summary -- with filter
+
+**Prompt:**
+
+> Summarize the User Enrollments dataset, but only for the "Student" role.
+
+**Expected:** Claude calls `get_data_summary` with:
+
+- dataset: "User Enrollments"
+- filter_by: `{"role_name": "Student"}`
+
+Returns stats for the filtered subset only. Row count should be less than the full dataset.
+
+## Test 11: get_data_summary -- with group_by
+
+**Prompt:**
+
+> Break down User Enrollments by role_name. How many of each role are there?
+
+**Expected:** Claude calls `get_data_summary` with:
+
+- dataset: "User Enrollments"
+- group_by: `["role_name"]`
+
+Returns group counts sorted by frequency (Student, Instructor, etc.). May also show numeric column means per group.
+
+## Test 12: execute_r -- join and analyze
+
+**Prompt:**
+
+> Join the Users and User Enrollments datasets. How many courses is each user enrolled in on average?
+
+**Expected:** Claude calls `execute_r` with something like:
+```r
+users <- bs_get_dataset("Users")
+enrollments <- bs_get_dataset("User Enrollments")
+joined <- bs_join(users, enrollments)
+joined %>%
+  group_by(user_id) %>%
+  summarise(n_courses = n_distinct(org_unit_id)) %>%
+  summarise(
+    mean_courses = mean(n_courses),
+    median_courses = median(n_courses)
+  )
+```
+Returns a small summary table.
+
+## Test 13: execute_r -- error handling
+
+**Prompt:**
+
+> Run this R code: `nonexistent_function(123)`
+
+**Expected:** Claude calls `execute_r`. The result should have `isError: true` with a message like "could not find function 'nonexistent_function'". Claude should explain the error gracefully.
+
+## Test 14: Multi-step analysis (integration test)
+
+**Prompt:**
+
+> I want a complete analysis of grade performance. First describe the Grade Results dataset so I understand the columns, then show me the distribution of final grades as a histogram, and finally give me the mean grade broken down by org_unit_id (show the top 10).
+
+**Expected:** Claude makes 3+ tool calls in sequence:
+
+1. `describe_dataset` or `execute_r` to explore columns
+2. `execute_r` with ggplot histogram -- inline image appears
+3. `execute_r` with grouped summary -- text table of top 10
+
+This tests the full workflow: discover, visualize, summarize.
+
+## Test 15: Removed tools are gone
+
+**Prompt:**
+
+> Use the get_dataset tool to download the Users table.
+
+**Expected:** Claude should NOT have access to `get_dataset` (it was removed). Instead it should either:
+
+- Use `execute_r` to load the data: `bs_get_dataset("Users") %>% head(20)`
+- Or use `get_data_summary` for stats
+- If it tries `get_dataset`, the server returns "Unknown tool" error
+
+## Test 16: list_schemas
+
+**Prompt:**
+
+> What schemas are registered and what are their key columns?
+
+**Expected:** Claude calls `list_schemas`. Returns a list of schema names with their key columns (the foreign keys used by `bs_join()`).
+
+## Troubleshooting
+
+**Server won't start:**
+
+- Check `claude_desktop_config.json` has the right path to `server.R`
+- Ensure `cwd` points to the directory with `config.yml`
+- Run `Rscript /path/to/server.R` manually to see stderr errors
+
+**Auth fails:**
+
+- Open R interactively, run `library(brightspaceR); bs_auth()` to get a token
+- The token is cached; the MCP server reuses it
+
+**Plots don't render:**
+
+- Ensure the `png()` graphics device is available (it should be on all standard R installs)
+- Check stderr for errors from `grDevices::png()`
+
+**Results are truncated:**
+
+- This is intentional at ~800KB. Use `head()` or `filter()` in `execute_r` to narrow results
+- The truncation message tells you this

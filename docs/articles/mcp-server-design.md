@@ -1,0 +1,362 @@
+# MCP Server: Design and Implementation
+
+## The Problem
+
+The original MCP server shipped 9 tools that mostly serialized raw data
+rows as JSON and sent them to Claude. This created three compounding
+problems:
+
+1.  **Size**: A single `get_dataset` call on a moderately large table
+    (e.g., Grade Results with 50K rows) would hit the MCP protocol’s 1MB
+    response limit, forcing artificial row caps.
+2.  **Waste**: Claude received thousands of JSON rows it couldn’t
+    meaningfully compute on. Every “what’s the average grade?” question
+    required the LLM to mentally sum and divide across a JSON array.
+3.  **Rigidity**: Dedicated tools like `student_summary` and
+    `course_summary` hard-coded specific analysis patterns. Any question
+    outside those patterns required a new tool or awkward workarounds.
+
+The redesign inverts the architecture: Claude writes R code, the server
+executes it in a persistent workspace, and returns compact results –
+text summaries and file-based visualizations.
+
+## Design Principles
+
+### Compute where compute belongs
+
+R is purpose-built for data manipulation. Claude is purpose-built for
+reasoning about what manipulation to do. The `execute_r` tool bridges
+these: Claude writes a dplyr pipeline, ggplot visualization, or
+statistical test; the server evaluates it and returns the result. No raw
+data crosses the wire unless explicitly requested.
+
+### Visualization: interactive HTML first, static PNG fallback
+
+The preferred visualization path uses Chart.js injected into
+self-contained HTML files:
+
+1.  `execute_r` aggregates data in R (counts, means, distributions)
+2.  Claude builds an HTML string with Chart.js loaded from CDN
+3.  [`writeLines()`](https://rdrr.io/r/base/writeLines.html) saves it to
+    the output directory
+4.  The user opens the HTML file in their browser
+
+&nbsp;
+
+    execute_r → aggregate data → paste0(Chart.js HTML) → writeLines()
+        ↓
+    Interactive chart in browser (tooltips, hover, responsive)
+
+As a fallback for cases where the user explicitly requests a PNG or a
+chart type Chart.js cannot handle, `execute_r` supports returning ggplot
+objects directly. When detected, the server renders the plot to a PNG
+file and generates an HTML viewer wrapper. Both files are saved to the
+configured output directory.
+
+### Outcome-oriented tools
+
+The old server had tools organized around API operations: `get_dataset`,
+`join_datasets`, `student_summary`. The redesign organizes around user
+goals:
+
+| Old (9 tools) | New (7 tools) | Why |
+|----|----|----|
+| `get_dataset` | `execute_r` | Claude writes `bs_get_dataset("Users") %>% head(10)` |
+| `student_summary` | `execute_r` | Claude writes the exact summary needed |
+| `course_summary` | `execute_r` | Claude writes the exact aggregation |
+| `join_datasets` | `execute_r` | Claude calls [`bs_join()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_join.md) directly |
+| `describe_dataset` | `describe_dataset` (enhanced) | Now returns column stats, not sample rows |
+| – | `get_data_summary` | Quick filter/group stats without writing R |
+
+### Progressive disclosure
+
+Every response from `describe_dataset` and `get_data_summary` ends with
+a hint:
+
+> “Use execute_r for custom analysis. Available: bs_get_dataset(),
+> bs_join(), dplyr verbs.”
+
+This teaches the model (and the user reading the transcript) that
+there’s a more powerful tool available when the pre-built summaries
+aren’t enough.
+
+### Server instructions
+
+The MCP `initialize` handshake includes an `instructions` field – a
+block of text that tells Claude the recommended workflow before any
+tools are called:
+
+    1. Use list_datasets or search_datasets to discover data
+    2. Use describe_dataset to understand columns and distributions
+    3. Use get_data_summary with filter_by/group_by for quick stats
+    4. Use execute_r for custom analysis
+
+The instructions also include performance guidelines, the Chart.js HTML
+pattern, available packages (dplyr, tidyr, ggplot2, lubridate, scales),
+and the date axis gotcha for ggplot2.
+
+## Architecture
+
+### Persistent workspace
+
+The server creates a `.mcp_workspace` environment at startup with
+`dplyr`, `tidyr`, `ggplot2`, `lubridate`, and `scales` pre-loaded. Every
+`execute_r` call evaluates code in this environment, so variables
+persist between calls:
+
+``` r
+
+# Call 1: load and filter
+users <- bs_get_dataset("Users") %>% filter(role_name == "Student")
+
+# Call 2: uses `users` from previous call
+users %>% count(org_unit_id, sort = TRUE)
+```
+
+The workspace also exposes `output_dir` – the path to the configured
+output directory – so Chart.js HTML files can be written there directly.
+
+### Output directory
+
+Visualizations are written to a configurable output directory.
+Resolution order:
+
+1.  `BRIGHTSPACER_OUTPUT_DIR` environment variable (if set)
+2.  `<package_root>/brightspaceR_output` (development mode)
+3.  `<working_directory>/brightspaceR_output` (fallback)
+4.  `<temp_dir>/brightspaceR_output` (last resort if directory creation
+    fails)
+
+The path is normalised with
+[`normalizePath()`](https://rdrr.io/r/base/normalizePath.html) and
+logged at startup. If creation fails, the server falls back gracefully
+and logs a warning.
+
+### Smart result formatting
+
+`handle_execute_r` inspects the result type and formats accordingly:
+
+| Result type | Formatting |
+|----|----|
+| `data.frame` with \<=50 rows | Full text table via [`print()`](https://rdrr.io/r/base/print.html) |
+| `data.frame` with \>50 rows | `head(20)` + “… N more rows” hint |
+| `gg`/`ggplot` object | Render to 900x600 PNG + HTML viewer, return file paths |
+| Character ending in `.html`/`.png`/`.pdf`/`.csv` | Return as file path |
+| Anything else | `capture.output(print(x))` |
+| Error | `isError: TRUE` with the error message |
+
+### Column summary helper
+
+`summarize_column()` is a shared function used by both
+`describe_dataset` and `get_data_summary`. It produces type-appropriate
+stats:
+
+- **Numeric**: min, max, mean, n_missing
+- **Character/Factor**: n_unique, top 3 values with counts, n_missing
+- **Logical**: n_true, n_false, n_missing
+- **Date/POSIXt**: min, max, n_missing
+
+This replaces the old approach of sending 5 sample rows, which told
+Claude almost nothing about the data distribution.
+
+### Response helpers
+
+Composable functions build MCP-compliant responses:
+
+- `mcp_text(text, audience)` – Creates a `TextContent` block with
+  optional `audience` annotation (`["user"]` for clean output,
+  `["assistant"]` for verbose diagnostics like row counts and join
+  warnings).
+- `mcp_result(contents, is_error)` – Wraps a list of content blocks into
+  a tool result. Handles size truncation at ~800KB.
+
+### Size guard
+
+The `mcp_result()` function checks the serialized JSON size of every
+response. If it exceeds 800KB, it finds the first text content block and
+truncates it with a clear message:
+
+    ... [TRUNCATED: response exceeded size limit.
+    Use head()/filter() to narrow results in execute_r.]
+
+This is a safety net, not the primary size control. The real size
+control is that `execute_r` returns computed results (a count, a mean, a
+chart file path) rather than raw data.
+
+### Defensive execution
+
+`execute_r` includes several layers of protection against runaway
+queries:
+
+**30-second timeout**: Every eval is wrapped in
+`setTimeLimit(elapsed = 30)`. If a Cartesian join or unfiltered
+aggregation over millions of rows hangs, the server kills it and returns
+a clear error: *“Execution timed out after 30 seconds. Try filtering
+data earlier or breaking into smaller steps.”*
+
+**Row-count reporting**: The workspace’s
+[`bs_get_dataset()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_get_dataset.md)
+wrapper emits a message like `[Grade Results: 523,041 rows x 12 cols]`
+every time it’s called. These messages are captured and returned to
+Claude as assistant-facing context (using `audience: ["assistant"]`), so
+Claude always knows how big the data it just loaded is – and can
+course-correct before the next operation.
+
+**Large-dataset warnings**: If a dataset exceeds 50K rows, the message
+includes an explicit warning: *“WARNING: large dataset – filter early to
+avoid slow operations”*. The same applies to
+[`bs_join()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_join.md)
+when either input exceeds 50K rows.
+
+**Server instructions**: The `initialize` response tells Claude to
+always call `describe_dataset` first to check row counts, filter early
+on large tables, and never return raw unfiltered data frames.
+
+These defenses are layered: instructions guide Claude to do the right
+thing, row-count messages let it self-correct mid-execution, and the
+timeout is the hard backstop.
+
+## Tool Reference
+
+### Discovery tools
+
+**`list_datasets`** – Returns all available BDS dataset names and
+descriptions. No parameters.
+
+**`search_datasets`** – Case-insensitive keyword search across dataset
+names and descriptions.
+
+**`auth_status`** – Reports whether the server has a valid Brightspace
+OAuth token.
+
+**`list_schemas`** – Lists registered dataset schemas and their key
+columns (used by
+[`bs_join()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_join.md)).
+
+### Analysis tools
+
+**`describe_dataset(name)`** – Loads a dataset and returns per-column
+summary statistics. The footer suggests using `execute_r` for custom
+queries.
+
+**`get_data_summary(dataset, filter_by?, group_by?)`** – The “quick
+stats” tool. Loads a dataset, optionally filters by column-value pairs,
+optionally groups. Without grouping, returns per-column stats. With
+grouping, returns group counts and numeric column means per group.
+Always suggests `execute_r` for anything more complex.
+
+**`execute_r(code)`** – The core tool. Claude writes R code as a string,
+the server evaluates it in the persistent workspace, and returns the
+result. Handles data frames, ggplot objects (saved as PNG + HTML), file
+paths, and arbitrary R objects.
+
+## Types of Analysis
+
+The MCP server is designed for the kinds of questions LMS administrators
+and institutional researchers typically ask. Here are the main
+categories with example prompts.
+
+### Enrollment analytics
+
+- “How many students are enrolled this semester vs last semester?”
+- “Show me enrollment trends by month for the last 2 years”
+- “Which courses have the highest drop rates?”
+- “Break down enrollments by role – how many students, instructors,
+  TAs?”
+
+### Grade performance
+
+- “What’s the average grade in STAT101?”
+- “Show me the grade distribution across all courses as a histogram”
+- “Which courses have the lowest pass rates (below 50%)?”
+- “Compare grade distributions between online and in-person sections”
+
+### Student engagement
+
+- “How many users haven’t logged in for 90 days?”
+- “What’s the average content completion rate per course?”
+- “Which discussion forums have the most activity?”
+- “Show me quiz attempt patterns – when do students take quizzes?”
+
+### Course health
+
+- “Which courses have no grade items set up?”
+- “List courses that haven’t been accessed in 6 months”
+- “Show me assignment submission rates by course”
+- “Which courses have the most content objects?”
+
+### Cross-dataset joins
+
+- “Join users and enrollments to find students enrolled in more than 5
+  courses”
+- “Correlate discussion post frequency with final grades”
+- “Find users with attendance below 80% whose grades are above 70%”
+
+### Reporting and dashboards
+
+- “Build me a dashboard showing KPIs for this semester”
+- “Generate a grade report for all courses in the Business faculty”
+- “Create a chart showing monthly active users over the past year”
+
+Each of these can be handled through the MCP workflow: discover
+datasets, check column distributions, then write R code that aggregates,
+joins, and visualizes.
+
+## Typical Conversation Flow
+
+    User: "How are students performing in STAT101?"
+
+    Claude thinks: I need to find the course, get grade data, and summarize it.
+
+    1. search_datasets(keyword="grade")
+       -> Finds "Grade Results"
+
+    2. describe_dataset(name="Grade Results")
+       -> Sees columns: user_id, org_unit_id, points_numerator, etc.
+       -> Sees row count: 523,041
+
+    3. execute_r(code="""
+       grades <- bs_get_dataset("Grade Results")
+       orgs <- bs_get_dataset("Org Units")
+       stat101 <- orgs %>% filter(grepl("STAT101", name))
+       grades %>%
+         filter(org_unit_id %in% stat101$org_unit_id) %>%
+         summarise(
+           n_students = n_distinct(user_id),
+           mean_grade = mean(points_numerator, na.rm = TRUE),
+           median_grade = median(points_numerator, na.rm = TRUE)
+         )
+       """)
+       -> Returns: tibble with 1 row of summary stats
+
+    4. execute_r(code="""
+       # Interactive chart
+       grade_dist <- grades %>%
+         filter(org_unit_id %in% stat101$org_unit_id,
+                !is.na(points_numerator)) %>%
+         mutate(bracket = cut(points_numerator,
+           breaks = seq(0, 100, 10), include.lowest = TRUE)) %>%
+         count(bracket)
+
+       html <- paste0('<!DOCTYPE html>...<script src=\"https://cdn.jsdelivr.net/npm/chart.js\"></script>...')
+       writeLines(html, file.path(output_dir, 'stat101_grades.html'))
+       browseURL(file.path(output_dir, 'stat101_grades.html'))
+       """)
+       -> Opens interactive bar chart in browser
+
+Note how calls 3 and 4 share variables (`grades`, `orgs`, `stat101`) via
+the persistent workspace. Claude computes with R, then builds Chart.js
+HTML for interactive rendering.
+
+## Security Considerations
+
+`execute_r` evaluates arbitrary R code. This is intentional – the server
+runs locally, authenticated with the user’s own Brightspace credentials.
+The trust boundary is the same as opening an R console. The workspace is
+sandboxed only in the sense that it’s a child environment of
+[`globalenv()`](https://rdrr.io/r/base/environment.html), not a separate
+process.
+
+For production deployments where multiple users share a server,
+`execute_r` would need process-level isolation (e.g., callr). That’s out
+of scope for the current single-user design.

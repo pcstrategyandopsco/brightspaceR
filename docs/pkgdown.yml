@@ -1,0 +1,15 @@
+pandoc: '3.9'
+pkgdown: 2.2.0
+pkgdown_sha: ~
+articles:
+  convenience-functions: convenience-functions.html
+  getting-started: getting-started.html
+  interactive-dashboard: interactive-dashboard.html
+  mcp-server-design: mcp-server-design.html
+  mcp-test-script: mcp-test-script.html
+  setup: setup.html
+  shiny-app: shiny-app.html
+last_built: 2026-03-06T08:00Z
+urls:
+  reference: https://peeyooshchandra.github.io/brightspaceR/reference
+  article: https://peeyooshchandra.github.io/brightspaceR/articles

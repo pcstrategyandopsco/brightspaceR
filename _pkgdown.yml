@@ -1,0 +1,75 @@
+url: https://peeyooshchandra.github.io/brightspaceR/
+
+template:
+  bootstrap: 5
+
+navbar:
+  structure:
+    left: [intro, reference, articles]
+    right: [search, github]
+  components:
+    github:
+      icon: fa-github
+      href: https://github.com/peeyooshchandra/brightspaceR
+
+articles:
+  - title: Get Started
+    navbar: ~
+    contents:
+      - setup
+      - getting-started
+  - title: Working with Data
+    contents:
+      - convenience-functions
+  - title: Visualisation & Apps
+    contents:
+      - interactive-dashboard
+      - shiny-app
+  - title: MCP Server
+    contents:
+      - mcp-server-design
+      - mcp-test-script
+
+reference:
+  - title: Authentication
+    desc: Connect to your Brightspace instance via OAuth2.
+    contents:
+      - bs_auth
+      - bs_auth_refresh
+      - bs_auth_token
+      - bs_deauth
+      - bs_has_token
+
+  - title: Datasets
+    desc: Discover and download Brightspace Data Sets.
+    contents:
+      - bs_list_datasets
+      - bs_list_extracts
+      - bs_download_dataset
+      - bs_download_all
+      - bs_get_dataset
+
+  - title: Joins
+    desc: Convenience functions for joining related datasets.
+    contents:
+      - bs_join
+      - bs_join_users_enrollments
+      - bs_join_enrollments_grades
+      - bs_join_grades_objects
+      - bs_join_content_progress
+      - bs_join_enrollments_roles
+      - bs_join_enrollments_orgunits
+
+  - title: Schemas & Parsing
+    desc: Column type definitions and data cleaning.
+    contents:
+      - bs_get_schema
+      - bs_list_schemas
+      - bs_clean_names
+
+  - title: Configuration
+    desc: Package configuration options.
+    contents:
+      - bs_api_version
+      - bs_config
+      - bs_config_set

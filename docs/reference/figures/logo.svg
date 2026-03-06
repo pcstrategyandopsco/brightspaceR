@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 232" width="200" height="232">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+    <linearGradient id="bar1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#38bdf8"/>
+      <stop offset="100%" style="stop-color:#0284c7"/>
+    </linearGradient>
+    <linearGradient id="bar2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#818cf8"/>
+      <stop offset="100%" style="stop-color:#6366f1"/>
+    </linearGradient>
+    <linearGradient id="bar3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#d97706"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Hex shape -->
+  <polygon points="100,2 196,59 196,173 100,230 4,173 4,59"
+           fill="url(#bg)" stroke="#f59e0b" stroke-width="3"/>
+
+  <!-- Subtle grid lines suggesting data -->
+  <g opacity="0.08" stroke="#ffffff" stroke-width="0.5">
+    <line x1="30" y1="55" x2="170" y2="55"/>
+    <line x1="30" y1="75" x2="170" y2="75"/>
+    <line x1="30" y1="95" x2="170" y2="95"/>
+    <line x1="30" y1="115" x2="170" y2="115"/>
+    <line x1="30" y1="135" x2="170" y2="135"/>
+  </g>
+
+  <!-- Bar chart - three ascending bars -->
+  <g transform="translate(56, 128)">
+    <!-- Bar 1 (short) -->
+    <rect x="0" y="-35" width="22" height="35" rx="3" fill="url(#bar1)"/>
+    <!-- Bar 2 (medium) -->
+    <rect x="30" y="-55" width="22" height="55" rx="3" fill="url(#bar2)"/>
+    <!-- Bar 3 (tall) -->
+    <rect x="60" y="-75" width="22" height="75" rx="3" fill="url(#bar3)"/>
+    <!-- Trend line -->
+    <polyline points="11,-35 41,-55 71,-75"
+              fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round" opacity="0.6"/>
+    <!-- Trend dots -->
+    <circle cx="11" cy="-35" r="3" fill="#ffffff" opacity="0.8"/>
+    <circle cx="41" cy="-55" r="3" fill="#ffffff" opacity="0.8"/>
+    <circle cx="71" cy="-75" r="3" fill="#ffffff" opacity="0.8"/>
+  </g>
+
+  <!-- Package name -->
+  <text x="100" y="163" text-anchor="middle"
+        font-family="'Fira Code', 'SF Mono', 'Menlo', monospace"
+        font-size="18" font-weight="700" letter-spacing="0.5">
+    <tspan fill="#e2e8f0">bright</tspan><tspan fill="#f59e0b">spaceR</tspan>
+  </text>
+
+  <!-- Tagline -->
+  <text x="100" y="181" text-anchor="middle"
+        font-family="'Inter', 'Helvetica Neue', sans-serif"
+        font-size="10.5" fill="#94a3b8" letter-spacing="1.8">LMS ANALYTICS</text>
+</svg>

@@ -1,0 +1,13 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^\.github$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^\.claude$
+^config\.yml$
+^brightspaceR_output$
+^for_review$
+^Rplots\.pdf$
+^.*\.rds$
