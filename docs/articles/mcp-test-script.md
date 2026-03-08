@@ -12,7 +12,7 @@ is described after each prompt.
 
 **Expected:** Claude calls `auth_status`. Response shows
 `"authenticated": true`. If false, run
-[`bs_auth()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_auth.md)
+[`bs_auth()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_auth.md)
 in an interactive R session first.
 
 ## Test 2: Dataset discovery
@@ -244,7 +244,7 @@ removed). Instead it should either:
 
 **Expected:** Claude calls `list_schemas`. Returns a list of schema
 names with their key columns (the foreign keys used by
-[`bs_join()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_join.md)).
+[`bs_join()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_join.md)).
 
 ## Troubleshooting
 
@@ -257,7 +257,7 @@ names with their key columns (the foreign keys used by
 **Auth fails:**
 
 - Open R interactively, run
-  [`library(brightspaceR); bs_auth()`](https://peeyooshchandra.github.io/brightspaceR/)
+  [`library(brightspaceR); bs_auth()`](https://pcstrategyandopsco.github.io/brightspaceR/)
   to get a token
 - The token is cached; the MCP server reuses it
 

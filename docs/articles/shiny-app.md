@@ -375,7 +375,7 @@ live_enrollments <- reactive({
 
 1.  Store credentials as environment variables on the server
 2.  Use
-    [`bs_auth_refresh()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_auth_refresh.md)
+    [`bs_auth_refresh()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_auth_refresh.md)
     with a long-lived refresh token instead of the interactive browser
     flow
 3.  Pin datasets with the `pins` package for faster startup:

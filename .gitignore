@@ -4,6 +4,7 @@
 .Ruserdata
 inst/doc
 config.yml
+CLAUDE.md
 
 # Generated output
 brightspaceR_output/

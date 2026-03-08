@@ -1,3 +1,40 @@
+#' Set the timezone for Brightspace analytics
+#'
+#' All analytics functions use this timezone for converting date columns.
+#'
+#' @param tz A valid timezone string from [OlsonNames()].
+#'
+#' @return Invisibly returns the timezone string.
+#' @export
+#'
+#' @examples
+#' bs_set_timezone("Pacific/Auckland")
+#' bs_set_timezone("America/New_York")
+bs_set_timezone <- function(tz) {
+  if (!tz %in% OlsonNames()) {
+    abort(c(
+      paste0("Invalid timezone: ", tz),
+      i = "Use `OlsonNames()` to see valid timezone strings."
+    ))
+  }
+  options(brightspaceR.timezone = tz)
+  cli_alert_success("Timezone set to {.val {tz}}")
+  invisible(tz)
+}
+
+#' Get the current Brightspace analytics timezone
+#'
+#' Returns the timezone set by [bs_set_timezone()], defaulting to `"UTC"`.
+#'
+#' @return Character string of the timezone.
+#' @export
+#'
+#' @examples
+#' bs_get_timezone()
+bs_get_timezone <- function() {
+  getOption("brightspaceR.timezone", "UTC")
+}
+
 #' Get or set the Brightspace API version
 #'
 #' @param version If provided, sets the API version. If `NULL`, returns the
@@ -95,6 +132,9 @@ bs_unzip <- function(zip_path) {
 #' @return Character vector of snake_case names.
 #' @keywords internal
 to_snake_case <- function(x) {
+  # Replace spaces with underscores (handles ADS column names like
+  # "Course Offering Id")
+  x <- gsub("\\s+", "_", x)
   # Insert underscore before uppercase letters that follow lowercase letters
   x <- gsub("([a-z])([A-Z])", "\\1_\\2", x)
   # Insert underscore before uppercase letters that are followed by lowercase
@@ -103,7 +143,6 @@ to_snake_case <- function(x) {
   # Convert to lowercase
   x <- tolower(x)
   # Replace multiple underscores with single
-
   x <- gsub("_+", "_", x)
   # Remove leading/trailing underscores
   x <- gsub("^_|_$", "", x)

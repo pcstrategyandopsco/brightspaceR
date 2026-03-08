@@ -4,7 +4,7 @@
 \alias{bs_download}
 \title{Download a file from a URL}
 \usage{
-bs_download(url, dest_path)
+bs_download(url, dest_path, download_size = NULL)
 }
 \arguments{
 \item{url}{Full URL to download.}

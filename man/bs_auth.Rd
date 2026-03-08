@@ -23,27 +23,26 @@ bs_auth(
 \code{"https://myschool.brightspace.com"}). Resolved in order: this argument,
 \code{config.yml} (if present), \code{BRIGHTSPACE_INSTANCE_URL} env var.}
 
-\item{redirect_uri}{The registered HTTPS redirect URI. Resolved in order:
-this argument, \code{config.yml} (if present), \code{BRIGHTSPACE_REDIRECT_URI}
-env var, or \code{"https://localhost:1410/"}. Must match the URI registered in
-your Brightspace OAuth2 app exactly.}
+\item{redirect_uri}{The registered redirect URI. Must match the URI
+registered in your Brightspace OAuth2 app exactly. Supports both
+\verb{http://localhost} (automatic capture via local server) and
+\verb{https://localhost} (browser-based with URL paste).}
 
-\item{scope}{OAuth2 scope. Defaults to \code{"datahub:dataexports:*"}.
-Use \code{"datahub:dataexports:* datahub:adhocdataexports:*"} to also
-access Advanced Data Sets.}
+\item{scope}{OAuth2 scope string (space-separated). Resolved from config.yml
+or defaults to BDS + ADS scopes.}
 }
 \value{
 Invisibly returns \code{TRUE} on success.
 }
 \description{
-Initiates an OAuth2 Authorization Code flow to authenticate with the
-Brightspace Data Sets API. Because Brightspace requires an HTTPS redirect
-URI and httr2's local server only supports HTTP, this function uses a
-manual copy-paste flow: it opens a browser for authorization, then prompts
-you to paste the redirect URL containing the authorization code.
+Initiates an OAuth2 Authorization Code flow with PKCE to authenticate with
+the Brightspace Data Hub API. The resulting token is cached to disk for
+reuse across sessions and automatically refreshed when expired.
 }
 \details{
-The resulting token is cached to disk for reuse across sessions.
+The first authentication requires an interactive R session (browser-based
+login). After that, cached credentials are used automatically — including
+in non-interactive scripts run via \code{Rscript}.
 }
 \examples{
 \dontrun{

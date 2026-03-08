@@ -9,7 +9,7 @@ bs_auth_refresh(
   client_id = Sys.getenv("BRIGHTSPACE_CLIENT_ID"),
   client_secret = Sys.getenv("BRIGHTSPACE_CLIENT_SECRET"),
   instance_url = Sys.getenv("BRIGHTSPACE_INSTANCE_URL"),
-  scope = "datahub:dataexports:*"
+  scope = ""
 )
 }
 \arguments{
@@ -24,7 +24,7 @@ environment variable.}
 \item{instance_url}{Your Brightspace instance URL. Defaults to
 \code{BRIGHTSPACE_INSTANCE_URL} environment variable.}
 
-\item{scope}{OAuth2 scope. Defaults to \code{"datahub:dataexports:*"}.}
+\item{scope}{OAuth2 scope.}
 }
 \value{
 Invisibly returns \code{TRUE} on success.

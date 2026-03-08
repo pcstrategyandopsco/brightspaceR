@@ -21,7 +21,7 @@ app.
 | **Application Name** | `brightspaceR` (or any name you like – this is shown to users on the consent page) |
 | **Authentication Workflow** | **Authorization Code Grant** |
 | **Redirect URI** | `https://localhost:1410/` |
-| **Scope** | `datahub:dataexports:*` |
+| **Scope** | See [About Scopes](#about-scopes) below |
 | **Access Token Lifetime** | Leave at default (3600 seconds is fine) |
 | **Enable Refresh Tokens** | **Yes** (recommended) |
 | **Prompt User for Consent** | Optional (Yes if you want users to see a consent screen) |
@@ -39,7 +39,7 @@ Brightspace requires all redirect URIs to use HTTPS – `http://` is not
 accepted. brightspaceR uses `https://localhost:1410/` by default.
 
 **How the flow works:** When you run
-[`bs_auth()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_auth.md),
+[`bs_auth()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_auth.md),
 the package opens your browser to the Brightspace authorization page.
 After you authorize, Brightspace redirects to
 `https://localhost:1410/?code=...`. Since there’s no local HTTPS server
@@ -51,30 +51,98 @@ and exchanges it for an access token.
 You can use a different redirect URI by setting the
 `BRIGHTSPACE_REDIRECT_URI` environment variable or passing
 `redirect_uri` to
-[`bs_auth()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_auth.md).
+[`bs_auth()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_auth.md).
 Just make sure it matches what you registered in Brightspace exactly.
 
 ### About Scopes
 
+{#about-scopes}
+
 Scopes control what API endpoints your application can access.
 Brightspace scopes follow the pattern `<group>:<resource>:<action>`.
+brightspaceR needs scopes from two tiers depending on which features you
+use.
 
-| Scope | Access |
+#### Tier 1: BDS only (minimum)
+
+These scopes are sufficient for
+[`bs_get_dataset()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_dataset.md),
+joins, grade and enrollment analytics – everything except Advanced Data
+Sets:
+
+| Scope | Used by |
 |----|----|
-| `datahub:dataexports:*` | Brightspace Data Sets (BDS) – full and differential extracts |
-| `datahub:adhocdataexports:*` | Advanced Data Sets (ADS) – ad-hoc data exports |
-| `core:*:*` | General API access (users, enrollments, etc. – not needed for BDS) |
+| `datasets:bds:read` | [`bs_list_datasets()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_list_datasets.md), [`bs_get_schema()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_schema.md) |
+| `datahub:dataexports:read` | [`bs_list_extracts()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_list_extracts.md), [`bs_download_dataset()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_download_dataset.md) |
+| `datahub:dataexports:download` | [`bs_get_dataset()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_dataset.md), [`bs_download_all()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_download_all.md) |
+| `users:profile:read` | [`bs_check_scopes()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_check_scopes.md) |
 
-For brightspaceR you only need `datahub:dataexports:*`. If you also want
-Advanced Data Sets, register with both scopes separated by a space:
-`datahub:dataexports:* datahub:adhocdataexports:*`.
+**Scope string for Tier 1:**
+
+    datasets:bds:read datahub:dataexports:read datahub:dataexports:download users:profile:read
+
+#### Tier 2: BDS + ADS (recommended)
+
+Add these scopes to also use
+[`bs_get_ads()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_ads.md)
+for Advanced Data Sets like Learner Usage. The ADS functions power the
+engagement, retention, and risk analytics
+([`bs_course_engagement()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_course_engagement.md),
+[`bs_identify_at_risk()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_identify_at_risk.md),
+[`bs_retention_summary()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_retention_summary.md),
+etc.):
+
+| Scope | Used by |
+|----|----|
+| `reporting:dataset:list` | [`bs_list_ads()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_list_ads.md) |
+| `reporting:dataset:fetch` | [`bs_create_ads_job()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_create_ads_job.md) (filter auto-detection) |
+| `reporting:job:create` | [`bs_create_ads_job()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_create_ads_job.md), [`bs_get_ads()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_ads.md) |
+| `reporting:job:list` | [`bs_list_ads_jobs()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_list_ads_jobs.md) |
+| `reporting:job:fetch` | [`bs_ads_job_status()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_ads_job_status.md) (polling) |
+| `reporting:job:download` | [`bs_download_ads()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_download_ads.md) |
+
+**Scope string for Tier 2 (recommended – paste this into Brightspace):**
+
+    datasets:bds:read datahub:dataexports:read datahub:dataexports:download reporting:dataset:list reporting:dataset:fetch reporting:job:create reporting:job:list reporting:job:fetch reporting:job:download users:profile:read
+
+> **Note:** If you register with Tier 1 scopes only, ADS functions like
+> [`bs_get_ads()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_ads.md)
+> will return `NULL` with an informative warning instead of crashing.
+> BDS workflows are completely unaffected. You can upgrade to Tier 2
+> later by updating the scopes in **Manage Extensibility** and
+> re-authenticating with
+> [`bs_deauth(); bs_auth()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_deauth.md).
+
+#### Verifying scopes
+
+After authenticating, run
+[`bs_check_scopes()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_check_scopes.md)
+to confirm which capabilities are available:
+
+``` r
+
+bs_check_scopes()
+#> i Testing API access with current token...
+#> v All 4 scope checks passed.
+```
+
+If any checks fail, compare the registered scopes in Brightspace
+(**Admin Tools** \> **Manage Extensibility** \> **OAuth 2.0** \> your
+app) with the scope strings above.
+
+#### Scope reference
+
+The canonical list of Brightspace OAuth2 scopes is published at:
+
+- [Brightspace API Scopes
+  Table](https://docs.valence.desire2learn.com/http-scopestable.html)
 
 ## Step 2: Configure Your R Environment
 
 There are two ways to store your credentials: a **config file**
 (recommended for projects) or **environment variables** (traditional
 approach). Both are picked up automatically by
-[`bs_auth()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_auth.md).
+[`bs_auth()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_auth.md).
 
 ### Option A: Config file (recommended)
 
@@ -89,10 +157,11 @@ default:
     client_secret: "your-client-secret"
     instance_url: "https://myschool.brightspace.com"
     redirect_uri: "https://localhost:1410/"
+    scope: "datasets:bds:read datahub:dataexports:read datahub:dataexports:download reporting:dataset:list reporting:dataset:fetch reporting:job:create reporting:job:list reporting:job:fetch reporting:job:download users:profile:read"
 ```
 
 Or use
-[`bs_config_set()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_config_set.md)
+[`bs_config_set()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_config_set.md)
 to create it interactively:
 
 ``` r
@@ -127,7 +196,7 @@ production:
 ### Option B: Environment variables
 
 You can pass credentials directly to
-[`bs_auth()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_auth.md),
+[`bs_auth()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_auth.md),
 but it’s more convenient (and safer) to store them as environment
 variables. Add the following to your `.Renviron` file:
 
@@ -150,7 +219,7 @@ Restart R for the changes to take effect.
 
 ### Credential resolution order
 
-[`bs_auth()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_auth.md)
+[`bs_auth()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_auth.md)
 resolves each credential in this order:
 
 1.  Explicit argument (e.g., `bs_auth(client_id = "...")`)
@@ -187,7 +256,7 @@ You should see:
 ### Token Caching and Refresh
 
 Tokens are cached to disk automatically. On subsequent calls,
-[`bs_auth()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_auth.md)
+[`bs_auth()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_auth.md)
 will reuse the cached token and refresh it if expired – no browser
 interaction needed.
 
@@ -224,7 +293,12 @@ or in a secure secrets manager.
 bs_has_token()
 #> [1] TRUE
 
-# List available datasets
+# Verify API scopes are configured correctly
+bs_check_scopes()
+#> i Testing API access with current token...
+#> v All 4 scope checks passed.
+
+# List available BDS datasets
 datasets <- bs_list_datasets()
 datasets
 #> # A tibble: 67 x 5
@@ -232,6 +306,15 @@ datasets
 #>    <chr>     <chr>     <chr>              <chr>                   <chr>
 #>  1 abc123    def456    Users              User demographics ...   2024-01-01...
 #>  2 ghi789    jkl012    User Enrollments   Enrollment records ...  2024-01-01...
+#> ...
+
+# If you have Tier 2 (ADS) scopes, also verify ADS access
+ads <- bs_list_ads()
+ads
+#> # A tibble: 12 x 4
+#>    dataset_id   name             description          category
+#>    <chr>        <chr>            <chr>                 <chr>
+#>  1 abc-def-...  Learner Usage    Activity metrics ...  Engagement
 #> ...
 ```
 
@@ -262,13 +345,21 @@ the `?code=...&state=...` query parameters. It should start with
 
 ### 403 Forbidden errors
 
-Your OAuth2 app may not have the correct scope, or the user account you
+Your OAuth2 app may not have the correct scopes, or the user account you
 authenticated with may not have permission to access Data Hub. Check:
 
-- The registered scope includes `datahub:dataexports:*`.
+- Run
+  [`bs_check_scopes()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_check_scopes.md)
+  to see which API capabilities are available.
+- The registered scopes include `datasets:bds:read`,
+  `datahub:dataexports:read`, and `datahub:dataexports:download` for
+  BDS.
+- For ADS access, add the `reporting:*` scopes listed above.
 - Your Brightspace user role has the **Data Hub** permissions enabled
   (typically requires an admin or a role with “Can Access Data Hub”
   permission).
+- The scopes registered in the Brightspace **Manage Extensibility**
+  OAuth2 settings must match the scopes requested by your application.
 
 ### Token expired and won’t refresh
 
@@ -282,6 +373,9 @@ bs_auth()
 
 ## References
 
+- [Brightspace API Scopes
+  Table](https://docs.valence.desire2learn.com/http-scopestable.html) –
+  canonical list of all OAuth2 scopes
 - [Brightspace OAuth 2.0
   Documentation](https://docs.valence.desire2learn.com/basic/oauth2.html)
 - [Getting Started with OAuth

@@ -64,7 +64,7 @@ goals:
 | `get_dataset` | `execute_r` | Claude writes `bs_get_dataset("Users") %>% head(10)` |
 | `student_summary` | `execute_r` | Claude writes the exact summary needed |
 | `course_summary` | `execute_r` | Claude writes the exact aggregation |
-| `join_datasets` | `execute_r` | Claude calls [`bs_join()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_join.md) directly |
+| `join_datasets` | `execute_r` | Claude calls [`bs_join()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_join.md) directly |
 | `describe_dataset` | `describe_dataset` (enhanced) | Now returns column stats, not sample rows |
 | – | `get_data_summary` | Quick filter/group stats without writing R |
 
@@ -195,7 +195,7 @@ a clear error: *“Execution timed out after 30 seconds. Try filtering
 data earlier or breaking into smaller steps.”*
 
 **Row-count reporting**: The workspace’s
-[`bs_get_dataset()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_get_dataset.md)
+[`bs_get_dataset()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_dataset.md)
 wrapper emits a message like `[Grade Results: 523,041 rows x 12 cols]`
 every time it’s called. These messages are captured and returned to
 Claude as assistant-facing context (using `audience: ["assistant"]`), so
@@ -205,7 +205,7 @@ course-correct before the next operation.
 **Large-dataset warnings**: If a dataset exceeds 50K rows, the message
 includes an explicit warning: *“WARNING: large dataset – filter early to
 avoid slow operations”*. The same applies to
-[`bs_join()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_join.md)
+[`bs_join()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_join.md)
 when either input exceeds 50K rows.
 
 **Server instructions**: The `initialize` response tells Claude to
@@ -231,7 +231,7 @@ OAuth token.
 
 **`list_schemas`** – Lists registered dataset schemas and their key
 columns (used by
-[`bs_join()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_join.md)).
+[`bs_join()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_join.md)).
 
 ### Analysis tools
 

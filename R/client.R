@@ -1,7 +1,10 @@
 #' Create a base Brightspace API request
 #'
 #' Builds an httr2 request with the correct base URL, OAuth2 token,
-#' user-agent, rate limiting, and retry logic.
+#' user-agent, and retry logic. Brightspace uses a token-bucket credit
+#' scheme for rate limiting (not a fixed rate), so no client-side throttle
+#' is applied. If the credit bucket is exhausted, the server returns 429
+#' with a `Retry-After` header, which httr2 honours automatically.
 #'
 #' @param path API path (e.g., `/d2l/api/lp/1.49/datasets/bds`).
 #'
@@ -14,7 +17,6 @@ bs_request <- function(path) {
     httr2::req_url_path_append(path) |>
     httr2::req_auth_bearer_token(bs_token()$access_token) |>
     httr2::req_user_agent("brightspaceR (https://github.com/peeyooshchandra/brightspaceR)") |>
-    httr2::req_throttle(rate = 10 / 60) |>
     httr2::req_retry(
       max_tries = 3,
       is_transient = bs_is_transient,
@@ -80,6 +82,20 @@ bs_get <- function(path, query = list()) {
     req <- httr2::req_url_query(req, !!!query)
   }
 
+  resp <- httr2::req_perform(req)
+  httr2::resp_body_json(resp)
+}
+
+#' Perform a POST request with a JSON body and return parsed JSON
+#'
+#' @param path API path.
+#' @param body A list to be serialized as JSON in the request body.
+#'
+#' @return Parsed JSON response as a list.
+#' @keywords internal
+bs_post <- function(path, body) {
+  req <- bs_request(path) |>
+    httr2::req_body_json(body)
   resp <- httr2::req_perform(req)
   httr2::resp_body_json(resp)
 }

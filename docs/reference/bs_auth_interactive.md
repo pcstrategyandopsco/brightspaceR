@@ -1,7 +1,13 @@
 # Interactive browser-based OAuth2 flow
 
-Builds the authorization URL, opens the browser, prompts for the
-redirect URL, and exchanges the code for a token.
+Handles two redirect URI schemes:
+
+- `http://localhost`: httr2 starts a local server to capture the code
+  automatically (zero user interaction after browser login).
+
+- `https://localhost`: Opens browser, then prompts user to paste the
+  redirect URL back (browser will show "can't connect" after auth — the
+  code is in the address bar).
 
 ## Usage
 
@@ -14,3 +20,9 @@ bs_auth_interactive(
   scope
 )
 ```
+
+## Details
+
+Requires an interactive R session. Non-interactive scripts should rely
+on cached tokens (from a prior interactive auth) or
+[`bs_auth_refresh()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_auth_refresh.md).

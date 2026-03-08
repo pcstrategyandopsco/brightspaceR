@@ -27,6 +27,7 @@ articles:
       - shiny-app
   - title: MCP Server
     contents:
+      - mcp-setup
       - mcp-server-design
       - mcp-test-script
 
@@ -67,9 +68,42 @@ reference:
       - bs_list_schemas
       - bs_clean_names
 
+  - title: Advanced Data Sets (ADS)
+    desc: Ad-hoc data exports via the Reporting API.
+    contents:
+      - bs_list_ads
+      - bs_get_ads
+      - bs_create_ads_job
+      - bs_ads_job_status
+      - bs_list_ads_jobs
+      - bs_download_ads
+      - bs_ads_filter
+      - bs_org_id
+      - bs_get_ads_schema
+      - bs_list_ads_schemas
+
+  - title: Analytics
+    desc: Composable analytics functions for engagement, performance, and retention.
+    contents:
+      - bs_filter_test_users
+      - bs_enrich_enrollments
+      - bs_summarize_enrollments
+      - bs_course_engagement
+      - bs_engagement_summary
+      - bs_engagement_score
+      - bs_grade_summary
+      - bs_assessment_performance
+      - bs_assignment_completion
+      - bs_identify_at_risk
+      - bs_retention_summary
+      - bs_course_summary
+
   - title: Configuration
     desc: Package configuration options.
     contents:
       - bs_api_version
       - bs_config
       - bs_config_set
+      - bs_set_timezone
+      - bs_get_timezone
+      - bs_check_scopes

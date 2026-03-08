@@ -110,11 +110,39 @@ bs_get_schema("Users")
 For unknown datasets, columns are read as character and then intelligently
 coerced to numeric, logical, or datetime types.
 
+## Advanced Data Sets (ADS)
+
+ADS datasets like Learner Usage provide engagement metrics not available in
+BDS. They require additional `reporting:*` OAuth2 scopes (Tier 2 -- see
+`vignette("setup")`).
+
+```{r}
+# Download Learner Usage (ADS)
+usage <- bs_get_ads("Learner Usage")
+
+# Per-user engagement metrics
+engagement <- bs_course_engagement(usage)
+
+# Identify at-risk students
+at_risk <- bs_identify_at_risk(usage)
+
+# Course-level dashboard
+dashboard <- bs_course_summary(usage)
+```
+
+If ADS scopes are not configured, `bs_get_ads()` returns `NULL` with a
+warning -- BDS functions are unaffected.
+
 ## Configuration
 
 Set the API version (default is `1.49`):
 ```{r}
 bs_api_version("1.50")
+```
+
+Set the timezone for date conversions in analytics functions:
+```{r}
+bs_set_timezone("Pacific/Auckland")
 ```
 
 ## Cleaning Up

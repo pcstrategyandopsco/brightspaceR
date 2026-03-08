@@ -74,8 +74,34 @@ grade_report <- bs_get_dataset("User Enrollments") |>
   bs_join_grades_objects(bs_get_dataset("Grade Objects"))
 ```
 
-**Analyse** with standard dplyr -- enrollment counts, grade distributions,
-active user reports, completion rates:
+**Advanced Data Sets (ADS)** for ad-hoc exports like Learner Usage (requires
+`reporting:*` scopes -- see the
+[setup guide](https://pcstrategyandopsco.github.io/brightspaceR/articles/setup.html)):
+
+```r
+usage <- bs_get_ads("Learner Usage")
+```
+
+ADS functions fail gracefully if scopes aren't configured -- BDS access still
+works without them.
+
+**Analyse** with built-in analytics functions or standard dplyr:
+
+```r
+# Student engagement per course
+engagement <- bs_course_engagement(usage)
+
+# Identify at-risk students
+at_risk <- bs_identify_at_risk(usage, thresholds = list(progress = 30))
+
+# Course-level dashboard
+dashboard <- bs_course_summary(usage)
+
+# Retention and dropout rates
+retention <- bs_retention_summary(usage, by = "course")
+```
+
+Or use dplyr directly:
 
 ```r
 library(dplyr)
@@ -90,11 +116,6 @@ grades |>
   filter(!is.na(points_numerator)) |>
   group_by(org_unit_id) |>
   summarise(mean_grade = mean(points_numerator, na.rm = TRUE))
-
-# Active users in the last 90 days
-bs_get_dataset("Users") |>
-  filter(last_accessed >= Sys.time() - as.difftime(90, units = "days")) |>
-  nrow()
 ```
 
 ## Installation
@@ -133,7 +154,12 @@ self-contained HTML charts you can share with colleagues.
 
 ### Setup
 
-Add this to your Claude Desktop configuration:
+The MCP server works with both **Claude Desktop** and **Claude Code (CLI)**.
+Add this to your configuration (see the
+[full setup guide](https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-setup.html)
+for platform-specific paths and Claude Code instructions):
+
+**Claude Desktop** (`claude_desktop_config.json`):
 
 ```json
 {
@@ -141,13 +167,27 @@ Add this to your Claude Desktop configuration:
     "brightspaceR": {
       "command": "Rscript",
       "args": ["<path-to>/brightspaceR/inst/mcp/server.R"],
-      "cwd": "<path-to>/brightspaceR"
+      "cwd": "<path-to-project-with-config-yml>"
     }
   }
 }
 ```
 
-See the [MCP Server Design](https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-server-design.html) article for architecture details, the full tool reference, and example analysis workflows.
+**Claude Code** (`~/.claude.json` or project `.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "brightspaceR": {
+      "command": "Rscript",
+      "args": ["<path-to>/brightspaceR/inst/mcp/server.R"],
+      "cwd": "<path-to-project-with-config-yml>"
+    }
+  }
+}
+```
+
+See the [MCP Setup Guide](https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-setup.html) for prerequisites, environment variables, and troubleshooting, and the [MCP Server Design](https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-server-design.html) article for architecture details and example workflows.
 
 ## Building dashboards and apps
 

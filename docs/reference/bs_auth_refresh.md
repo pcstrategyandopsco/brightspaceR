@@ -11,7 +11,7 @@ bs_auth_refresh(
   client_id = Sys.getenv("BRIGHTSPACE_CLIENT_ID"),
   client_secret = Sys.getenv("BRIGHTSPACE_CLIENT_SECRET"),
   instance_url = Sys.getenv("BRIGHTSPACE_INSTANCE_URL"),
-  scope = "datahub:dataexports:*"
+  scope = ""
 )
 ```
 
@@ -38,7 +38,7 @@ bs_auth_refresh(
 
 - scope:
 
-  OAuth2 scope. Defaults to `"datahub:dataexports:*"`.
+  OAuth2 scope.
 
 ## Value
 

@@ -49,7 +49,7 @@
 <li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
 </form></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/peeyooshchandra/brightspaceR"><span class="fa fa-github"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/pcstrategyandopsco/brightspaceR"><span class="fa fa-github"></span></a></li>
       </ul>
 </div>
 
@@ -65,7 +65,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>OAuth2 Setup for Brightspace Data Sets</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/peeyooshchandra/brightspaceR/blob/HEAD/vignettes/setup.Rmd" class="external-link"><code>vignettes/setup.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pcstrategyandopsco/brightspaceR/blob/HEAD/vignettes/setup.Rmd" class="external-link"><code>vignettes/setup.Rmd</code></a></small>
       <div class="d-none name"><code>setup.Rmd</code></div>
     </div>
 
@@ -115,7 +115,7 @@ users on the consent page)</td>
 </tr>
 <tr class="even">
 <td><strong>Scope</strong></td>
-<td><code>datahub:dataexports:*</code></td>
+<td>See <a href="#about-scopes">About Scopes</a> below</td>
 </tr>
 <tr class="odd">
 <td><strong>Access Token Lifetime</strong></td>
@@ -163,9 +163,17 @@ matches what you registered in Brightspace exactly.</p>
 <div class="section level3">
 <h3 id="about-scopes">About Scopes<a class="anchor" aria-label="anchor" href="#about-scopes"></a>
 </h3>
+<p>{#about-scopes}</p>
 <p>Scopes control what API endpoints your application can access.
 Brightspace scopes follow the pattern
-<code>&lt;group&gt;:&lt;resource&gt;:&lt;action&gt;</code>.</p>
+<code>&lt;group&gt;:&lt;resource&gt;:&lt;action&gt;</code>. brightspaceR
+needs scopes from two tiers depending on which features you use.</p>
+<div class="section level4">
+<h4 id="tier-1-bds-only-minimum">Tier 1: BDS only (minimum)<a class="anchor" aria-label="anchor" href="#tier-1-bds-only-minimum"></a>
+</h4>
+<p>These scopes are sufficient for <code><a href="../reference/bs_get_dataset.html">bs_get_dataset()</a></code>, joins,
+grade and enrollment analytics – everything except Advanced Data
+Sets:</p>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -173,28 +181,120 @@ Brightspace scopes follow the pattern
 </colgroup>
 <thead><tr class="header">
 <th>Scope</th>
-<th>Access</th>
+<th>Used by</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><code>datahub:dataexports:*</code></td>
-<td>Brightspace Data Sets (BDS) – full and differential extracts</td>
+<td><code>datasets:bds:read</code></td>
+<td>
+<code><a href="../reference/bs_list_datasets.html">bs_list_datasets()</a></code>, <code><a href="../reference/bs_get_schema.html">bs_get_schema()</a></code>
+</td>
 </tr>
 <tr class="even">
-<td><code>datahub:adhocdataexports:*</code></td>
-<td>Advanced Data Sets (ADS) – ad-hoc data exports</td>
+<td><code>datahub:dataexports:read</code></td>
+<td>
+<code><a href="../reference/bs_list_extracts.html">bs_list_extracts()</a></code>,
+<code><a href="../reference/bs_download_dataset.html">bs_download_dataset()</a></code>
+</td>
 </tr>
 <tr class="odd">
-<td><code>core:*:*</code></td>
-<td>General API access (users, enrollments, etc. – not needed for
-BDS)</td>
+<td><code>datahub:dataexports:download</code></td>
+<td>
+<code><a href="../reference/bs_get_dataset.html">bs_get_dataset()</a></code>, <code><a href="../reference/bs_download_all.html">bs_download_all()</a></code>
+</td>
+</tr>
+<tr class="even">
+<td><code>users:profile:read</code></td>
+<td><code><a href="../reference/bs_check_scopes.html">bs_check_scopes()</a></code></td>
 </tr>
 </tbody>
 </table>
-<p>For brightspaceR you only need <code>datahub:dataexports:*</code>. If
-you also want Advanced Data Sets, register with both scopes separated by
-a space:
-<code>datahub:dataexports:* datahub:adhocdataexports:*</code>.</p>
+<p><strong>Scope string for Tier 1:</strong></p>
+<pre><code>datasets:bds:read datahub:dataexports:read datahub:dataexports:download users:profile:read</code></pre>
+</div>
+<div class="section level4">
+<h4 id="tier-2-bds-ads-recommended">Tier 2: BDS + ADS (recommended)<a class="anchor" aria-label="anchor" href="#tier-2-bds-ads-recommended"></a>
+</h4>
+<p>Add these scopes to also use <code><a href="../reference/bs_get_ads.html">bs_get_ads()</a></code> for Advanced
+Data Sets like Learner Usage. The ADS functions power the engagement,
+retention, and risk analytics (<code><a href="../reference/bs_course_engagement.html">bs_course_engagement()</a></code>,
+<code><a href="../reference/bs_identify_at_risk.html">bs_identify_at_risk()</a></code>, <code><a href="../reference/bs_retention_summary.html">bs_retention_summary()</a></code>,
+etc.):</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Scope</th>
+<th>Used by</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>reporting:dataset:list</code></td>
+<td><code><a href="../reference/bs_list_ads.html">bs_list_ads()</a></code></td>
+</tr>
+<tr class="even">
+<td><code>reporting:dataset:fetch</code></td>
+<td>
+<code><a href="../reference/bs_create_ads_job.html">bs_create_ads_job()</a></code> (filter auto-detection)</td>
+</tr>
+<tr class="odd">
+<td><code>reporting:job:create</code></td>
+<td>
+<code><a href="../reference/bs_create_ads_job.html">bs_create_ads_job()</a></code>, <code><a href="../reference/bs_get_ads.html">bs_get_ads()</a></code>
+</td>
+</tr>
+<tr class="even">
+<td><code>reporting:job:list</code></td>
+<td><code><a href="../reference/bs_list_ads_jobs.html">bs_list_ads_jobs()</a></code></td>
+</tr>
+<tr class="odd">
+<td><code>reporting:job:fetch</code></td>
+<td>
+<code><a href="../reference/bs_ads_job_status.html">bs_ads_job_status()</a></code> (polling)</td>
+</tr>
+<tr class="even">
+<td><code>reporting:job:download</code></td>
+<td><code><a href="../reference/bs_download_ads.html">bs_download_ads()</a></code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Scope string for Tier 2 (recommended – paste this into
+Brightspace):</strong></p>
+<pre><code>datasets:bds:read datahub:dataexports:read datahub:dataexports:download reporting:dataset:list reporting:dataset:fetch reporting:job:create reporting:job:list reporting:job:fetch reporting:job:download users:profile:read</code></pre>
+<blockquote>
+<p><strong>Note:</strong> If you register with Tier 1 scopes only, ADS
+functions like <code><a href="../reference/bs_get_ads.html">bs_get_ads()</a></code> will return <code>NULL</code>
+with an informative warning instead of crashing. BDS workflows are
+completely unaffected. You can upgrade to Tier 2 later by updating the
+scopes in <strong>Manage Extensibility</strong> and re-authenticating
+with <code><a href="../reference/bs_deauth.html">bs_deauth(); bs_auth()</a></code>.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="verifying-scopes">Verifying scopes<a class="anchor" aria-label="anchor" href="#verifying-scopes"></a>
+</h4>
+<p>After authenticating, run <code><a href="../reference/bs_check_scopes.html">bs_check_scopes()</a></code> to confirm
+which capabilities are available:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/bs_check_scopes.html">bs_check_scopes</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; i Testing API access with current token...</span></span>
+<span><span class="co">#&gt; v All 4 scope checks passed.</span></span></code></pre></div>
+<p>If any checks fail, compare the registered scopes in Brightspace
+(<strong>Admin Tools</strong> &gt; <strong>Manage Extensibility</strong>
+&gt; <strong>OAuth 2.0</strong> &gt; your app) with the scope strings
+above.</p>
+</div>
+<div class="section level4">
+<h4 id="scope-reference">Scope reference<a class="anchor" aria-label="anchor" href="#scope-reference"></a>
+</h4>
+<p>The canonical list of Brightspace OAuth2 scopes is published at:</p>
+<ul>
+<li><a href="https://docs.valence.desire2learn.com/http-scopestable.html" class="external-link">Brightspace
+API Scopes Table</a></li>
+</ul>
+</div>
 </div>
 </div>
 <div class="section level2">
@@ -209,14 +309,15 @@ automatically by <code><a href="../reference/bs_auth.html">bs_auth()</a></code>.
 </h3>
 <p>{#config-file}</p>
 <p>Create a <code>config.yml</code> file in your project root:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">default</span><span class="kw">:</span></span>
-<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="at">  </span><span class="fu">brightspace</span><span class="kw">:</span></span>
-<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="at">    </span><span class="fu">client_id</span><span class="kw">:</span><span class="at"> </span><span class="st">"your-client-id"</span></span>
-<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="at">    </span><span class="fu">client_secret</span><span class="kw">:</span><span class="at"> </span><span class="st">"your-client-secret"</span></span>
-<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="at">    </span><span class="fu">instance_url</span><span class="kw">:</span><span class="at"> </span><span class="st">"https://myschool.brightspace.com"</span></span>
-<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="at">    </span><span class="fu">redirect_uri</span><span class="kw">:</span><span class="at"> </span><span class="st">"https://localhost:1410/"</span></span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">default</span><span class="kw">:</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="at">  </span><span class="fu">brightspace</span><span class="kw">:</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="at">    </span><span class="fu">client_id</span><span class="kw">:</span><span class="at"> </span><span class="st">"your-client-id"</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="at">    </span><span class="fu">client_secret</span><span class="kw">:</span><span class="at"> </span><span class="st">"your-client-secret"</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="at">    </span><span class="fu">instance_url</span><span class="kw">:</span><span class="at"> </span><span class="st">"https://myschool.brightspace.com"</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="at">    </span><span class="fu">redirect_uri</span><span class="kw">:</span><span class="at"> </span><span class="st">"https://localhost:1410/"</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="at">    </span><span class="fu">scope</span><span class="kw">:</span><span class="at"> </span><span class="st">"datasets:bds:read datahub:dataexports:read datahub:dataexports:download reporting:dataset:list reporting:dataset:fetch reporting:job:create reporting:job:list reporting:job:fetch reporting:job:download users:profile:read"</span></span></code></pre></div>
 <p>Or use <code><a href="../reference/bs_config_set.html">bs_config_set()</a></code> to create it interactively:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/bs_config_set.html">bs_config_set</a></span><span class="op">(</span></span>
 <span>  client_id <span class="op">=</span> <span class="st">"your-client-id"</span>,</span>
 <span>  client_secret <span class="op">=</span> <span class="st">"your-client-secret"</span>,</span>
@@ -225,16 +326,16 @@ automatically by <code><a href="../reference/bs_auth.html">bs_auth()</a></code>.
 <p>The config file supports environment-based profiles via the <a href="https://rstudio.github.io/config/" class="external-link">config</a> package. Set the
 <code>R_CONFIG_ACTIVE</code> environment variable to switch
 profiles:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">default</span><span class="kw">:</span></span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="at">  </span><span class="fu">brightspace</span><span class="kw">:</span></span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="at">    </span><span class="fu">client_id</span><span class="kw">:</span><span class="at"> </span><span class="st">"dev-id"</span></span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="at">    </span><span class="fu">instance_url</span><span class="kw">:</span><span class="at"> </span><span class="st">"https://dev.brightspace.com"</span></span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a></span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="fu">production</span><span class="kw">:</span></span>
-<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="at">  </span><span class="fu">inherits</span><span class="kw">:</span><span class="at"> default</span></span>
-<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="at">  </span><span class="fu">brightspace</span><span class="kw">:</span></span>
-<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="at">    </span><span class="fu">client_id</span><span class="kw">:</span><span class="at"> </span><span class="st">"prod-id"</span></span>
-<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="at">    </span><span class="fu">instance_url</span><span class="kw">:</span><span class="at"> </span><span class="st">"https://myschool.brightspace.com"</span></span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">default</span><span class="kw">:</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="at">  </span><span class="fu">brightspace</span><span class="kw">:</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="at">    </span><span class="fu">client_id</span><span class="kw">:</span><span class="at"> </span><span class="st">"dev-id"</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="at">    </span><span class="fu">instance_url</span><span class="kw">:</span><span class="at"> </span><span class="st">"https://dev.brightspace.com"</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="fu">production</span><span class="kw">:</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="at">  </span><span class="fu">inherits</span><span class="kw">:</span><span class="at"> default</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="at">  </span><span class="fu">brightspace</span><span class="kw">:</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="at">    </span><span class="fu">client_id</span><span class="kw">:</span><span class="at"> </span><span class="st">"prod-id"</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="at">    </span><span class="fu">instance_url</span><span class="kw">:</span><span class="at"> </span><span class="st">"https://myschool.brightspace.com"</span></span></code></pre></div>
 <blockquote>
 <p><strong>Security note</strong>: Make sure <code>config.yml</code> is
 in your <code>.gitignore</code> to avoid committing secrets to version
@@ -247,7 +348,7 @@ control.</p>
 <p>You can pass credentials directly to <code><a href="../reference/bs_auth.html">bs_auth()</a></code>, but it’s
 more convenient (and safer) to store them as environment variables. Add
 the following to your <code>.Renviron</code> file:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Open .Renviron for editing</span></span>
 <span><span class="fu">usethis</span><span class="fu">::</span><span class="fu"><a href="https://usethis.r-lib.org/reference/edit.html" class="external-link">edit_r_environ</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>Then add these lines:</p>
@@ -277,8 +378,8 @@ to version control. It should already be listed in
 <div class="section level2">
 <h2 id="step-3-authenticate">Step 3: Authenticate<a class="anchor" aria-label="anchor" href="#step-3-authenticate"></a>
 </h2>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://peeyooshchandra.github.io/brightspaceR/">brightspaceR</a></span><span class="op">)</span></span>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://pcstrategyandopsco.github.io/brightspaceR/">brightspaceR</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Uses environment variables automatically</span></span>
 <span><span class="fu"><a href="../reference/bs_auth.html">bs_auth</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
@@ -306,7 +407,7 @@ tokens, and caches them to disk.</li>
 <code><a href="../reference/bs_auth.html">bs_auth()</a></code> will reuse the cached token and refresh it if
 expired – no browser interaction needed.</p>
 <p>To force re-authentication:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/bs_deauth.html">bs_deauth</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/bs_auth.html">bs_auth</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -316,7 +417,7 @@ expired – no browser interaction needed.</p>
 <p>For scripts that run unattended (e.g., cron jobs, scheduled ETL
 pipelines), use a refresh token obtained from a prior interactive
 session:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/bs_auth_refresh.html">bs_auth_refresh</a></span><span class="op">(</span></span>
 <span>  refresh_token <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"BRIGHTSPACE_REFRESH_TOKEN"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -328,12 +429,17 @@ or in a secure secrets manager.</p>
 <div class="section level2">
 <h2 id="step-4-verify-it-works">Step 4: Verify It Works<a class="anchor" aria-label="anchor" href="#step-4-verify-it-works"></a>
 </h2>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Check authentication status</span></span>
 <span><span class="fu"><a href="../reference/bs_has_token.html">bs_has_token</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] TRUE</span></span>
 <span></span>
-<span><span class="co"># List available datasets</span></span>
+<span><span class="co"># Verify API scopes are configured correctly</span></span>
+<span><span class="fu"><a href="../reference/bs_check_scopes.html">bs_check_scopes</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; i Testing API access with current token...</span></span>
+<span><span class="co">#&gt; v All 4 scope checks passed.</span></span>
+<span></span>
+<span><span class="co"># List available BDS datasets</span></span>
 <span><span class="va">datasets</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bs_list_datasets.html">bs_list_datasets</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">datasets</span></span>
 <span><span class="co">#&gt; # A tibble: 67 x 5</span></span>
@@ -341,6 +447,15 @@ or in a secure secrets manager.</p>
 <span><span class="co">#&gt;    &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt;              &lt;chr&gt;                   &lt;chr&gt;</span></span>
 <span><span class="co">#&gt;  1 abc123    def456    Users              User demographics ...   2024-01-01...</span></span>
 <span><span class="co">#&gt;  2 ghi789    jkl012    User Enrollments   Enrollment records ...  2024-01-01...</span></span>
+<span><span class="co">#&gt; ...</span></span>
+<span></span>
+<span><span class="co"># If you have Tier 2 (ADS) scopes, also verify ADS access</span></span>
+<span><span class="va">ads</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bs_list_ads.html">bs_list_ads</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">ads</span></span>
+<span><span class="co">#&gt; # A tibble: 12 x 4</span></span>
+<span><span class="co">#&gt;    dataset_id   name             description          category</span></span>
+<span><span class="co">#&gt;    &lt;chr&gt;        &lt;chr&gt;            &lt;chr&gt;                 &lt;chr&gt;</span></span>
+<span><span class="co">#&gt;  1 abc-def-...  Learner Usage    Activity metrics ...  Engagement</span></span>
 <span><span class="co">#&gt; ...</span></span></code></pre></div>
 </div>
 <div class="section level2">
@@ -350,7 +465,7 @@ or in a secure secrets manager.</p>
 <h3 id="no-client-id-found">“No client ID found”<a class="anchor" aria-label="anchor" href="#no-client-id-found"></a>
 </h3>
 <p>Make sure your environment variables are set. Check with:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"BRIGHTSPACE_CLIENT_ID"</span><span class="op">)</span></span></code></pre></div>
 <p>If empty, re-check your <code>.Renviron</code> file and restart
 R.</p>
@@ -373,22 +488,30 @@ parameters. It should start with
 <div class="section level3">
 <h3 id="forbidden-errors">403 Forbidden errors<a class="anchor" aria-label="anchor" href="#forbidden-errors"></a>
 </h3>
-<p>Your OAuth2 app may not have the correct scope, or the user account
+<p>Your OAuth2 app may not have the correct scopes, or the user account
 you authenticated with may not have permission to access Data Hub.
 Check:</p>
 <ul>
-<li>The registered scope includes
-<code>datahub:dataexports:*</code>.</li>
+<li>Run <code><a href="../reference/bs_check_scopes.html">bs_check_scopes()</a></code> to see which API capabilities are
+available.</li>
+<li>The registered scopes include <code>datasets:bds:read</code>,
+<code>datahub:dataexports:read</code>, and
+<code>datahub:dataexports:download</code> for BDS.</li>
+<li>For ADS access, add the <code>reporting:*</code> scopes listed
+above.</li>
 <li>Your Brightspace user role has the <strong>Data Hub</strong>
 permissions enabled (typically requires an admin or a role with “Can
 Access Data Hub” permission).</li>
+<li>The scopes registered in the Brightspace <strong>Manage
+Extensibility</strong> OAuth2 settings must match the scopes requested
+by your application.</li>
 </ul>
 </div>
 <div class="section level3">
 <h3 id="token-expired-and-wont-refresh">Token expired and won’t refresh<a class="anchor" aria-label="anchor" href="#token-expired-and-wont-refresh"></a>
 </h3>
 <p>Clear the cached token and re-authenticate:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/bs_deauth.html">bs_deauth</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/bs_auth.html">bs_auth</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -397,6 +520,9 @@ Access Data Hub” permission).</li>
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
 <ul>
+<li>
+<a href="https://docs.valence.desire2learn.com/http-scopestable.html" class="external-link">Brightspace
+API Scopes Table</a> – canonical list of all OAuth2 scopes</li>
 <li><a href="https://docs.valence.desire2learn.com/basic/oauth2.html" class="external-link">Brightspace
 OAuth 2.0 Documentation</a></li>
 <li><a href="https://community.d2l.com/brightspace/kb/articles/21863-how-to-get-started-with-oauth-2-0" class="external-link">Getting

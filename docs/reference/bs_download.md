@@ -5,7 +5,7 @@ Download a file from a URL
 ## Usage
 
 ``` r
-bs_download(url, dest_path)
+bs_download(url, dest_path, download_size = NULL)
 ```
 
 ## Arguments

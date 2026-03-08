@@ -1,0 +1,22 @@
+# Get the root organisation ID
+
+Calls `/d2l/api/lp/(version)/organization/info` and returns the org
+identifier.
+
+## Usage
+
+``` r
+bs_org_id()
+```
+
+## Value
+
+Character string of the root org unit ID.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+bs_org_id()
+} # }
+```

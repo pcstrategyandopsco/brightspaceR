@@ -14,6 +14,9 @@ bs_parse_csv <- function(file_path, dataset_name = NULL) {
   if (!is.null(dataset_name)) {
     schema_key <- normalize_dataset_name(dataset_name)
     schema <- bs_schemas[[schema_key]]
+    if (is.null(schema)) {
+      schema <- bs_ads_schemas[[schema_key]]
+    }
   }
 
   na_values <- c("", "NA", "null", "NULL", "None")

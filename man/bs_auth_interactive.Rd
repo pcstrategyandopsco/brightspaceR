@@ -13,7 +13,17 @@ bs_auth_interactive(
 )
 }
 \description{
-Builds the authorization URL, opens the browser, prompts for the redirect
-URL, and exchanges the code for a token.
+Handles two redirect URI schemes:
+\itemize{
+\item \verb{http://localhost}: httr2 starts a local server to capture the code
+automatically (zero user interaction after browser login).
+\item \verb{https://localhost}: Opens browser, then prompts user to paste the
+redirect URL back (browser will show "can't connect" after auth — the
+code is in the address bar).
+}
+}
+\details{
+Requires an interactive R session. Non-interactive scripts should rely on
+cached tokens (from a prior interactive auth) or \code{\link[=bs_auth_refresh]{bs_auth_refresh()}}.
 }
 \keyword{internal}

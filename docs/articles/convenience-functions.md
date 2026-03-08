@@ -8,7 +8,7 @@ This article walks through each one.
 
 ### Single dataset by name
 
-[`bs_get_dataset()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_get_dataset.md)
+[`bs_get_dataset()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_dataset.md)
 is the workhorse. It looks up a dataset by name, downloads the latest
 full extract, parses the CSV with the correct column types, and returns
 a tidy tibble with snake_case column names:
@@ -27,7 +27,7 @@ users
 ### Discovery
 
 If you don’t know the exact dataset name, use
-[`bs_list_datasets()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_list_datasets.md)
+[`bs_list_datasets()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_list_datasets.md)
 to browse everything available, or `bs_search_datasets()` to filter by
 keyword:
 
@@ -62,7 +62,7 @@ ways to join them.
 
 ### Smart join: `bs_join()`
 
-[`bs_join()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_join.md)
+[`bs_join()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_join.md)
 examines both data frames, finds columns ending in `_id` that appear in
 both, and performs a left join on those columns:
 
@@ -186,7 +186,7 @@ intelligent type coercion:
 - Everything else stays `character`
 
 This means
-[`bs_get_dataset()`](https://peeyooshchandra.github.io/brightspaceR/reference/bs_get_dataset.md)
+[`bs_get_dataset()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_dataset.md)
 returns usable tibbles even for datasets the package doesn’t know about.
 
 ### Column name conversion

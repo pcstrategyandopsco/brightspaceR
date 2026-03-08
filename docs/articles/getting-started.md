@@ -10,7 +10,7 @@ types, and provides convenience functions for joining them.
 
 Before using this package you must register an OAuth2 application in
 your Brightspace instance. See
-[`vignette("setup")`](https://peeyooshchandra.github.io/brightspaceR/articles/setup.md)
+[`vignette("setup")`](https://pcstrategyandopsco.github.io/brightspaceR/articles/setup.md)
 for detailed step-by-step instructions covering app registration,
 scopes, redirect URIs, and troubleshooting.
 
@@ -111,6 +111,32 @@ bs_get_schema("Users")
 For unknown datasets, columns are read as character and then
 intelligently coerced to numeric, logical, or datetime types.
 
+## Advanced Data Sets (ADS)
+
+ADS datasets like Learner Usage provide engagement metrics not available
+in BDS. They require additional `reporting:*` OAuth2 scopes (Tier 2 –
+see
+[`vignette("setup")`](https://pcstrategyandopsco.github.io/brightspaceR/articles/setup.md)).
+
+``` r
+
+# Download Learner Usage (ADS)
+usage <- bs_get_ads("Learner Usage")
+
+# Per-user engagement metrics
+engagement <- bs_course_engagement(usage)
+
+# Identify at-risk students
+at_risk <- bs_identify_at_risk(usage)
+
+# Course-level dashboard
+dashboard <- bs_course_summary(usage)
+```
+
+If ADS scopes are not configured,
+[`bs_get_ads()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_ads.md)
+returns `NULL` with a warning – BDS functions are unaffected.
+
 ## Configuration
 
 Set the API version (default is `1.49`):
@@ -118,6 +144,13 @@ Set the API version (default is `1.49`):
 ``` r
 
 bs_api_version("1.50")
+```
+
+Set the timezone for date conversions in analytics functions:
+
+``` r
+
+bs_set_timezone("Pacific/Auckland")
 ```
 
 ## Cleaning Up
