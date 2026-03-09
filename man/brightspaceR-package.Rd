@@ -6,7 +6,7 @@
 \alias{brightspaceR-package}
 \title{brightspaceR: Access D2L 'Brightspace' Data Sets via the 'BDS' API}
 \description{
-Connect to the D2L 'Brightspace' Data Sets ('BDS') API via 'OAuth2', download all available datasets as tidy data frames with proper types, join them using convenience functions that know the foreign key relationships, and analyse student engagement, performance, and retention with composable analytics functions.
+Connect to the D2L 'Brightspace' Data Sets ('BDS') API via 'OAuth2', download all available datasets as tidy data frames with proper types, join them using convenience functions that know the foreign key relationships, and analyse student engagement, performance, and retention with ready-made analytics functions.
 }
 \seealso{
 Useful links:
