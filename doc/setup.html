@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>OAuth2 Setup for Brightspace Data Sets</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">OAuth2 Setup for Brightspace Data Sets</h1>
+
+
+
+<p>Before you can use brightspaceR, you need to register an OAuth2
+application in your Brightspace instance and configure your R
+environment with the credentials. This guide walks through every
+step.</p>
+<div id="step-1-register-an-oauth2-application" class="section level2">
+<h2>Step 1: Register an OAuth2 Application</h2>
+<p>You need administrator access (or help from an admin) to register an
+app.</p>
+<ol style="list-style-type: decimal">
+<li>Log in to your Brightspace instance (e.g.,
+<code>https://myschool.brightspace.com</code>).</li>
+<li>Navigate to <strong>Admin Tools</strong> &gt; <strong>Manage
+Extensibility</strong>.</li>
+<li>Select the <strong>OAuth 2.0</strong> tab.</li>
+<li>Click <strong>Register an app</strong>.</li>
+<li>Fill in the registration form:</li>
+</ol>
+<table>
+<colgroup>
+<col width="50%" />
+<col width="50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Application Name</strong></td>
+<td><code>brightspaceR</code> (or any name you like – this is shown to
+users on the consent page)</td>
+</tr>
+<tr class="even">
+<td><strong>Authentication Workflow</strong></td>
+<td><strong>Authorization Code Grant</strong></td>
+</tr>
+<tr class="odd">
+<td><strong>Redirect URI</strong></td>
+<td><code>https://localhost:1410/</code></td>
+</tr>
+<tr class="even">
+<td><strong>Scope</strong></td>
+<td>See <a href="#about-scopes">About Scopes</a> below</td>
+</tr>
+<tr class="odd">
+<td><strong>Access Token Lifetime</strong></td>
+<td>Leave at default (3600 seconds is fine)</td>
+</tr>
+<tr class="even">
+<td><strong>Enable Refresh Tokens</strong></td>
+<td><strong>Yes</strong> (recommended)</td>
+</tr>
+<tr class="odd">
+<td><strong>Prompt User for Consent</strong></td>
+<td>Optional (Yes if you want users to see a consent screen)</td>
+</tr>
+</tbody>
+</table>
+<ol start="6" style="list-style-type: decimal">
+<li>Accept the <strong>Non-Commercial Developer Agreement</strong> (or
+your institution’s terms).</li>
+<li>Click <strong>Register</strong>.</li>
+</ol>
+<p>After registration you’ll receive a <strong>Client ID</strong> and
+<strong>Client Secret</strong>. Save these securely – you’ll need them
+in the next step.</p>
+<div id="about-the-redirect-uri" class="section level3">
+<h3>About the Redirect URI</h3>
+<p>Brightspace requires all redirect URIs to use HTTPS –
+<code>http://</code> is not accepted. brightspaceR uses
+<code>https://localhost:1410/</code> by default.</p>
+<p><strong>How the flow works:</strong> When you run
+<code>bs_auth()</code>, the package opens your browser to the
+Brightspace authorization page. After you authorize, Brightspace
+redirects to <code>https://localhost:1410/?code=...</code>. Since
+there’s no local HTTPS server listening, your browser will show a
+connection error – that’s expected. You simply copy the full URL from
+your browser’s address bar and paste it back into R. The package
+extracts the authorization code from the URL and exchanges it for an
+access token.</p>
+<p>You can use a different redirect URI by setting the
+<code>BRIGHTSPACE_REDIRECT_URI</code> environment variable or passing
+<code>redirect_uri</code> to <code>bs_auth()</code>. Just make sure it
+matches what you registered in Brightspace exactly.</p>
+</div>
+<div id="about-scopes" class="section level3">
+<h3>About Scopes</h3>
+<p>{#about-scopes}</p>
+<p>Scopes control what API endpoints your application can access.
+Brightspace scopes follow the pattern
+<code>&lt;group&gt;:&lt;resource&gt;:&lt;action&gt;</code>. brightspaceR
+needs scopes from two tiers depending on which features you use.</p>
+<div id="tier-1-bds-only-minimum" class="section level4">
+<h4>Tier 1: BDS only (minimum)</h4>
+<p>These scopes are sufficient for <code>bs_get_dataset()</code>, joins,
+grade and enrollment analytics – everything except Advanced Data
+Sets:</p>
+<table>
+<colgroup>
+<col width="50%" />
+<col width="50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Scope</th>
+<th>Used by</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>datasets:bds:read</code></td>
+<td><code>bs_list_datasets()</code>, <code>bs_get_schema()</code></td>
+</tr>
+<tr class="even">
+<td><code>datahub:dataexports:read</code></td>
+<td><code>bs_list_extracts()</code>,
+<code>bs_download_dataset()</code></td>
+</tr>
+<tr class="odd">
+<td><code>datahub:dataexports:download</code></td>
+<td><code>bs_get_dataset()</code>, <code>bs_download_all()</code></td>
+</tr>
+<tr class="even">
+<td><code>users:profile:read</code></td>
+<td><code>bs_check_scopes()</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Scope string for Tier 1:</strong></p>
+<pre><code>datasets:bds:read datahub:dataexports:read datahub:dataexports:download users:profile:read</code></pre>
+</div>
+<div id="tier-2-bds-ads-recommended" class="section level4">
+<h4>Tier 2: BDS + ADS (recommended)</h4>
+<p>Add these scopes to also use <code>bs_get_ads()</code> for Advanced
+Data Sets like Learner Usage. The ADS functions power the engagement,
+retention, and risk analytics (<code>bs_course_engagement()</code>,
+<code>bs_identify_at_risk()</code>, <code>bs_retention_summary()</code>,
+etc.):</p>
+<table>
+<colgroup>
+<col width="50%" />
+<col width="50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Scope</th>
+<th>Used by</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>reporting:dataset:list</code></td>
+<td><code>bs_list_ads()</code></td>
+</tr>
+<tr class="even">
+<td><code>reporting:dataset:fetch</code></td>
+<td><code>bs_create_ads_job()</code> (filter auto-detection)</td>
+</tr>
+<tr class="odd">
+<td><code>reporting:job:create</code></td>
+<td><code>bs_create_ads_job()</code>, <code>bs_get_ads()</code></td>
+</tr>
+<tr class="even">
+<td><code>reporting:job:list</code></td>
+<td><code>bs_list_ads_jobs()</code></td>
+</tr>
+<tr class="odd">
+<td><code>reporting:job:fetch</code></td>
+<td><code>bs_ads_job_status()</code> (polling)</td>
+</tr>
+<tr class="even">
+<td><code>reporting:job:download</code></td>
+<td><code>bs_download_ads()</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Scope string for Tier 2 (recommended – paste this into
+Brightspace):</strong></p>
+<pre><code>datasets:bds:read datahub:dataexports:read datahub:dataexports:download reporting:dataset:list reporting:dataset:fetch reporting:job:create reporting:job:list reporting:job:fetch reporting:job:download users:profile:read</code></pre>
+<blockquote>
+<p><strong>Note:</strong> If you register with Tier 1 scopes only, ADS
+functions like <code>bs_get_ads()</code> will return <code>NULL</code>
+with an informative warning instead of crashing. BDS workflows are
+completely unaffected. You can upgrade to Tier 2 later by updating the
+scopes in <strong>Manage Extensibility</strong> and re-authenticating
+with <code>bs_deauth(); bs_auth()</code>.</p>
+</blockquote>
+</div>
+<div id="verifying-scopes" class="section level4">
+<h4>Verifying scopes</h4>
+<p>After authenticating, run <code>bs_check_scopes()</code> to confirm
+which capabilities are available:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">bs_check_scopes</span>()</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="co">#&gt; i Testing API access with current token...</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="co">#&gt; v All 4 scope checks passed.</span></span></code></pre></div>
+<p>If any checks fail, compare the registered scopes in Brightspace
+(<strong>Admin Tools</strong> &gt; <strong>Manage Extensibility</strong>
+&gt; <strong>OAuth 2.0</strong> &gt; your app) with the scope strings
+above.</p>
+</div>
+<div id="scope-reference" class="section level4">
+<h4>Scope reference</h4>
+<p>The canonical list of Brightspace OAuth2 scopes is published at:</p>
+<ul>
+<li><a href="https://docs.valence.desire2learn.com/http-scopestable.html">Brightspace
+API Scopes Table</a></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="step-2-configure-your-r-environment" class="section level2">
+<h2>Step 2: Configure Your R Environment</h2>
+<p>There are two ways to store your credentials: a <strong>config
+file</strong> (recommended for projects) or <strong>environment
+variables</strong> (traditional approach). Both are picked up
+automatically by <code>bs_auth()</code>.</p>
+<div id="option-a-config-file-recommended" class="section level3">
+<h3>Option A: Config file (recommended)</h3>
+<p>{#config-file}</p>
+<p>Create a <code>config.yml</code> file in your project root:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">default</span><span class="kw">:</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="at">  </span><span class="fu">brightspace</span><span class="kw">:</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="at">    </span><span class="fu">client_id</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;your-client-id&quot;</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="at">    </span><span class="fu">client_secret</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;your-client-secret&quot;</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="at">    </span><span class="fu">instance_url</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;https://myschool.brightspace.com&quot;</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="at">    </span><span class="fu">redirect_uri</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;https://localhost:1410/&quot;</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="at">    </span><span class="fu">scope</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;datasets:bds:read datahub:dataexports:read datahub:dataexports:download reporting:dataset:list reporting:dataset:fetch reporting:job:create reporting:job:list reporting:job:fetch reporting:job:download users:profile:read&quot;</span></span></code></pre></div>
+<p>Or use <code>bs_config_set()</code> to create it interactively:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">bs_config_set</span>(</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="at">client_id =</span> <span class="st">&quot;your-client-id&quot;</span>,</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="at">client_secret =</span> <span class="st">&quot;your-client-secret&quot;</span>,</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>  <span class="at">instance_url =</span> <span class="st">&quot;https://myschool.brightspace.com&quot;</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>)</span></code></pre></div>
+<p>The config file supports environment-based profiles via the <a href="https://rstudio.github.io/config/">config</a> package. Set the
+<code>R_CONFIG_ACTIVE</code> environment variable to switch
+profiles:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">default</span><span class="kw">:</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="at">  </span><span class="fu">brightspace</span><span class="kw">:</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="at">    </span><span class="fu">client_id</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;dev-id&quot;</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="at">    </span><span class="fu">instance_url</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;https://dev.brightspace.com&quot;</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="fu">production</span><span class="kw">:</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="at">  </span><span class="fu">inherits</span><span class="kw">:</span><span class="at"> default</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="at">  </span><span class="fu">brightspace</span><span class="kw">:</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="at">    </span><span class="fu">client_id</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;prod-id&quot;</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="at">    </span><span class="fu">instance_url</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;https://myschool.brightspace.com&quot;</span></span></code></pre></div>
+<blockquote>
+<p><strong>Security note</strong>: Make sure <code>config.yml</code> is
+in your <code>.gitignore</code> to avoid committing secrets to version
+control.</p>
+</blockquote>
+</div>
+<div id="option-b-environment-variables" class="section level3">
+<h3>Option B: Environment variables</h3>
+<p>You can pass credentials directly to <code>bs_auth()</code>, but it’s
+more convenient (and safer) to store them as environment variables. Add
+the following to your <code>.Renviron</code> file:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="co"># Open .Renviron for editing</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>usethis<span class="sc">::</span><span class="fu">edit_r_environ</span>()</span></code></pre></div>
+<p>Then add these lines:</p>
+<pre><code>BRIGHTSPACE_CLIENT_ID=your-client-id-here
+BRIGHTSPACE_CLIENT_SECRET=your-client-secret-here
+BRIGHTSPACE_INSTANCE_URL=https://myschool.brightspace.com</code></pre>
+<p>Restart R for the changes to take effect.</p>
+<blockquote>
+<p><strong>Security note</strong>: Never commit <code>.Renviron</code>
+to version control. It should already be listed in
+<code>.gitignore</code> by default.</p>
+</blockquote>
+</div>
+<div id="credential-resolution-order" class="section level3">
+<h3>Credential resolution order</h3>
+<p><code>bs_auth()</code> resolves each credential in this order:</p>
+<ol style="list-style-type: decimal">
+<li>Explicit argument (e.g.,
+<code>bs_auth(client_id = &quot;...&quot;)</code>)</li>
+<li><code>config.yml</code> in the working directory (if present)</li>
+<li>Environment variable (e.g., <code>BRIGHTSPACE_CLIENT_ID</code>)</li>
+</ol>
+</div>
+</div>
+<div id="step-3-authenticate" class="section level2">
+<h2>Step 3: Authenticate</h2>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">library</span>(brightspaceR)</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="co"># Uses environment variables automatically</span></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="fu">bs_auth</span>()</span></code></pre></div>
+<p>This will:</p>
+<ol style="list-style-type: decimal">
+<li>Open your default browser to the Brightspace login/consent
+page.</li>
+<li>You log in with your Brightspace credentials and authorize the
+app.</li>
+<li>Brightspace redirects to
+<code>https://localhost:1410/?code=...&amp;state=...</code>.</li>
+<li>Your browser shows a connection error (because there’s no local
+HTTPS server) – <strong>this is expected and normal</strong>.</li>
+<li>Copy the entire URL from your browser’s address bar.</li>
+<li>Paste it into the R console when prompted.</li>
+<li>brightspaceR extracts the authorization code, exchanges it for
+tokens, and caches them to disk.</li>
+</ol>
+<p>You should see:</p>
+<pre><code>v Authenticated with Brightspace at &lt;https://myschool.brightspace.com&gt;</code></pre>
+<div id="token-caching-and-refresh" class="section level3">
+<h3>Token Caching and Refresh</h3>
+<p>Tokens are cached to disk automatically. On subsequent calls,
+<code>bs_auth()</code> will reuse the cached token and refresh it if
+expired – no browser interaction needed.</p>
+<p>To force re-authentication:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">bs_deauth</span>()</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="fu">bs_auth</span>()</span></code></pre></div>
+</div>
+<div id="non-interactive-environments-scheduled-scripts" class="section level3">
+<h3>Non-interactive Environments (Scheduled Scripts)</h3>
+<p>For scripts that run unattended (e.g., cron jobs, scheduled ETL
+pipelines), use a refresh token obtained from a prior interactive
+session:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="fu">bs_auth_refresh</span>(</span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>  <span class="at">refresh_token =</span> <span class="fu">Sys.getenv</span>(<span class="st">&quot;BRIGHTSPACE_REFRESH_TOKEN&quot;</span>)</span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>)</span></code></pre></div>
+<p>This exchanges the refresh token for a new access token without any
+browser interaction. Store the refresh token as an environment variable
+or in a secure secrets manager.</p>
+</div>
+</div>
+<div id="step-4-verify-it-works" class="section level2">
+<h2>Step 4: Verify It Works</h2>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="co"># Check authentication status</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="fu">bs_has_token</span>()</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="co"># Verify API scopes are configured correctly</span></span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="fu">bs_check_scopes</span>()</span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co">#&gt; i Testing API access with current token...</span></span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a><span class="co">#&gt; v All 4 scope checks passed.</span></span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a></span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="co"># List available BDS datasets</span></span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a>datasets <span class="ot">&lt;-</span> <span class="fu">bs_list_datasets</span>()</span>
+<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a>datasets</span>
+<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a><span class="co">#&gt; # A tibble: 67 x 5</span></span>
+<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a><span class="co">#&gt;    schema_id plugin_id name               description             created_date</span></span>
+<span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a><span class="co">#&gt;    &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt;              &lt;chr&gt;                   &lt;chr&gt;</span></span>
+<span id="cb13-16"><a href="#cb13-16" tabindex="-1"></a><span class="co">#&gt;  1 abc123    def456    Users              User demographics ...   2024-01-01...</span></span>
+<span id="cb13-17"><a href="#cb13-17" tabindex="-1"></a><span class="co">#&gt;  2 ghi789    jkl012    User Enrollments   Enrollment records ...  2024-01-01...</span></span>
+<span id="cb13-18"><a href="#cb13-18" tabindex="-1"></a><span class="co">#&gt; ...</span></span>
+<span id="cb13-19"><a href="#cb13-19" tabindex="-1"></a></span>
+<span id="cb13-20"><a href="#cb13-20" tabindex="-1"></a><span class="co"># If you have Tier 2 (ADS) scopes, also verify ADS access</span></span>
+<span id="cb13-21"><a href="#cb13-21" tabindex="-1"></a>ads <span class="ot">&lt;-</span> <span class="fu">bs_list_ads</span>()</span>
+<span id="cb13-22"><a href="#cb13-22" tabindex="-1"></a>ads</span>
+<span id="cb13-23"><a href="#cb13-23" tabindex="-1"></a><span class="co">#&gt; # A tibble: 12 x 4</span></span>
+<span id="cb13-24"><a href="#cb13-24" tabindex="-1"></a><span class="co">#&gt;    dataset_id   name             description          category</span></span>
+<span id="cb13-25"><a href="#cb13-25" tabindex="-1"></a><span class="co">#&gt;    &lt;chr&gt;        &lt;chr&gt;            &lt;chr&gt;                 &lt;chr&gt;</span></span>
+<span id="cb13-26"><a href="#cb13-26" tabindex="-1"></a><span class="co">#&gt;  1 abc-def-...  Learner Usage    Activity metrics ...  Engagement</span></span>
+<span id="cb13-27"><a href="#cb13-27" tabindex="-1"></a><span class="co">#&gt; ...</span></span></code></pre></div>
+</div>
+<div id="troubleshooting" class="section level2">
+<h2>Troubleshooting</h2>
+<div id="no-client-id-found" class="section level3">
+<h3>“No client ID found”</h3>
+<p>Make sure your environment variables are set. Check with:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="fu">Sys.getenv</span>(<span class="st">&quot;BRIGHTSPACE_CLIENT_ID&quot;</span>)</span></code></pre></div>
+<p>If empty, re-check your <code>.Renviron</code> file and restart
+R.</p>
+</div>
+<div id="browser-doesnt-open" class="section level3">
+<h3>Browser doesn’t open</h3>
+<p>If you’re in an environment without a browser (e.g., RStudio Server),
+the authorization URL is printed to the console. Copy it into a browser
+on any machine, authorize, then copy the redirect URL back.</p>
+</div>
+<div id="no-authorization-code-found-in-the-redirect-url" class="section level3">
+<h3>“No authorization code found in the redirect URL”</h3>
+<p>Make sure you copy the <strong>entire</strong> URL from the address
+bar, including the <code>?code=...&amp;state=...</code> query
+parameters. It should start with
+<code>https://localhost:1410/</code>.</p>
+</div>
+<div id="forbidden-errors" class="section level3">
+<h3>403 Forbidden errors</h3>
+<p>Your OAuth2 app may not have the correct scopes, or the user account
+you authenticated with may not have permission to access Data Hub.
+Check:</p>
+<ul>
+<li>Run <code>bs_check_scopes()</code> to see which API capabilities are
+available.</li>
+<li>The registered scopes include <code>datasets:bds:read</code>,
+<code>datahub:dataexports:read</code>, and
+<code>datahub:dataexports:download</code> for BDS.</li>
+<li>For ADS access, add the <code>reporting:*</code> scopes listed
+above.</li>
+<li>Your Brightspace user role has the <strong>Data Hub</strong>
+permissions enabled (typically requires an admin or a role with “Can
+Access Data Hub” permission).</li>
+<li>The scopes registered in the Brightspace <strong>Manage
+Extensibility</strong> OAuth2 settings must match the scopes requested
+by your application.</li>
+</ul>
+</div>
+<div id="token-expired-and-wont-refresh" class="section level3">
+<h3>Token expired and won’t refresh</h3>
+<p>Clear the cached token and re-authenticate:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="fu">bs_deauth</span>()</span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a><span class="fu">bs_auth</span>()</span></code></pre></div>
+</div>
+</div>
+<div id="references" class="section level2">
+<h2>References</h2>
+<ul>
+<li><a href="https://docs.valence.desire2learn.com/http-scopestable.html">Brightspace
+API Scopes Table</a> – canonical list of all OAuth2 scopes</li>
+<li><a href="https://docs.valence.desire2learn.com/basic/oauth2.html">Brightspace
+OAuth 2.0 Documentation</a></li>
+<li><a href="https://community.d2l.com/brightspace/kb/articles/21863-how-to-get-started-with-oauth-2-0">Getting
+Started with OAuth 2.0</a></li>
+<li><a href="https://community.d2l.com/brightspace/kb/articles/1130-how-to-get-started-with-data-hubs-apis-brightspace-data-sets">Getting
+Started with Data Hub APIs: Brightspace Data Sets</a></li>
+<li><a href="https://github.com/Brightspace/bds-headless-client-example">BDS
+Headless Client Example (D2L GitHub)</a></li>
+</ul>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,329 @@
+---
+title: "MCP Server Setup"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{MCP Server Setup}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+brightspaceR includes an MCP (Model Context Protocol) server that lets AI
+assistants like Claude query your Brightspace data using natural language.
+Instead of writing R code yourself, you describe what you want and the
+assistant discovers datasets, writes the analysis code, executes it, and
+returns the results -- including interactive Chart.js visualisations.
+
+This guide walks through installing and configuring the MCP server for
+**Claude Desktop** and **Claude Code (CLI)**.
+
+## Prerequisites
+
+Before setting up the MCP server, make sure you have:
+
+1. **brightspaceR installed** -- either from GitHub or loaded from a local
+   clone:
+   ```r
+   # Install from GitHub
+   remotes::install_github("pcstrategyandopsco/brightspaceR")
+
+   # Or clone and use the development version
+   git clone https://github.com/pcstrategyandopsco/brightspaceR.git
+   ```
+
+2. **OAuth2 credentials configured** -- the MCP server authenticates using
+   your existing brightspaceR credentials. Follow `vignette("setup")` to
+   register an OAuth2 app and create your `config.yml` or set environment
+   variables.
+
+3. **A valid cached token** -- run `bs_auth()` once in an interactive R
+   session before starting the MCP server. The server reuses the cached
+   token at startup:
+   ```r
+   library(brightspaceR)
+   bs_auth()
+   bs_has_token()
+   #> [1] TRUE
+   ```
+
+4. **R packages** -- the server loads `jsonlite` and `stringr` directly,
+   plus `dplyr`, `tidyr`, `ggplot2`, `lubridate`, and `scales` into the
+   persistent workspace. Install any that are missing:
+   ```r
+   install.packages(c("jsonlite", "stringr", "dplyr", "tidyr",
+                       "ggplot2", "lubridate", "scales"))
+   ```
+
+5. **pkgload** (development mode only) -- if running from a local clone
+   rather than an installed package, the server uses `pkgload::load_all()`:
+   ```r
+   install.packages("pkgload")
+   ```
+
+## Locating the server script
+
+The MCP server script lives at `inst/mcp/server.R` inside the package. The
+exact path depends on how you installed brightspaceR.
+
+**From a local clone:**
+```
+/path/to/brightspaceR/inst/mcp/server.R
+```
+
+**From an installed package:**
+```r
+system.file("mcp", "server.R", package = "brightspaceR")
+#> "/Library/Frameworks/R.framework/.../brightspaceR/mcp/server.R"
+```
+
+Use the full absolute path in the configuration below.
+
+## Claude Desktop setup
+
+[Claude Desktop](https://claude.com/download) uses a JSON configuration file
+to register MCP servers.
+
+### Step 1: Find your config file
+
+| Platform | Config file location |
+|----------|---------------------|
+| **macOS** | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| **Windows** | `%APPDATA%\Claude\claude_desktop_config.json` |
+| **Linux** | `~/.config/Claude/claude_desktop_config.json` |
+
+Create the file if it doesn't exist.
+
+### Step 2: Add the brightspaceR server
+
+Open the config file and add the `brightspaceR` entry under `mcpServers`.
+Replace the paths with your actual locations:
+
+```json
+{
+  "mcpServers": {
+    "brightspaceR": {
+      "command": "Rscript",
+      "args": ["/Users/you/brightspaceR/inst/mcp/server.R"],
+      "cwd": "/Users/you/project-with-config-yml"
+    }
+  }
+}
+```
+
+| Field | Value |
+|-------|-------|
+| `command` | `Rscript` (must be on your PATH) |
+| `args` | Absolute path to `server.R` |
+| `cwd` | Working directory -- should contain your `config.yml` with Brightspace credentials. If you use environment variables instead, this can be any directory. |
+
+**Windows example:**
+
+```json
+{
+  "mcpServers": {
+    "brightspaceR": {
+      "command": "Rscript.exe",
+      "args": ["C:\\Users\\you\\brightspaceR\\inst\\mcp\\server.R"],
+      "cwd": "C:\\Users\\you\\project"
+    }
+  }
+}
+```
+
+> **Tip:** If `Rscript` is not on your PATH, use the full path to the
+> executable (e.g., `/usr/local/bin/Rscript` on macOS or
+> `C:\Program Files\R\R-4.4.0\bin\Rscript.exe` on Windows).
+
+### Step 3: Restart Claude Desktop
+
+Quit and reopen Claude Desktop. The brightspaceR server starts automatically.
+You should see a hammer icon in the chat input area indicating MCP tools are
+available.
+
+### Step 4: Verify the connection
+
+Type into Claude Desktop:
+
+> Are you connected to Brightspace?
+
+Claude should call the `auth_status` tool and confirm authentication. If it
+reports `authenticated: false`, run `bs_auth()` in an interactive R session
+and restart Claude Desktop.
+
+## Claude Code (CLI) setup
+
+[Claude Code](https://platform.claude.com/docs/en/docs/claude-code) reads MCP
+server configuration from `~/.claude.json` (global) or from project-level
+`.mcp.json` files.
+
+### Option A: Global configuration (~/.claude.json)
+
+Add the server to your `~/.claude.json`:
+
+```json
+{
+  "mcpServers": {
+    "brightspaceR": {
+      "command": "Rscript",
+      "args": ["/Users/you/brightspaceR/inst/mcp/server.R"],
+      "cwd": "/Users/you/project-with-config-yml"
+    }
+  }
+}
+```
+
+This makes the brightspaceR tools available in every Claude Code session.
+
+### Option B: Project-level configuration (.mcp.json)
+
+Create a `.mcp.json` file in your project root:
+
+```json
+{
+  "mcpServers": {
+    "brightspaceR": {
+      "command": "Rscript",
+      "args": ["/Users/you/brightspaceR/inst/mcp/server.R"],
+      "cwd": "."
+    }
+  }
+}
+```
+
+This limits the MCP server to sessions started in that project directory.
+Set `cwd` to `"."` if your project root contains the `config.yml`.
+
+### Verify in Claude Code
+
+Start a Claude Code session and type:
+
+```
+/mcp
+```
+
+You should see `brightspaceR` listed with its 7 tools. Then ask:
+
+> Are you connected to Brightspace?
+
+## Environment variables
+
+The server supports several environment variables for advanced configuration:
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `BRIGHTSPACER_PKG_DIR` | Path to brightspaceR package root (overrides auto-detection) | Auto-detected from `server.R` location |
+| `BRIGHTSPACER_OUTPUT_DIR` | Directory for Chart.js HTML and PNG output files | `<pkg_root>/brightspaceR_output` or `<cwd>/brightspaceR_output` |
+| `R_CONFIG_ACTIVE` | Config profile to use from `config.yml` (e.g., `"production"`) | `"default"` |
+
+Set these in your MCP server configuration if needed:
+
+```json
+{
+  "mcpServers": {
+    "brightspaceR": {
+      "command": "Rscript",
+      "args": ["/Users/you/brightspaceR/inst/mcp/server.R"],
+      "cwd": "/Users/you/project",
+      "env": {
+        "BRIGHTSPACER_OUTPUT_DIR": "/Users/you/Desktop/brightspace_charts",
+        "R_CONFIG_ACTIVE": "production"
+      }
+    }
+  }
+}
+```
+
+## Available tools
+
+Once connected, the assistant has access to 7 tools:
+
+| Tool | Purpose |
+|------|---------|
+| `auth_status` | Check authentication status and token validity |
+| `list_datasets` | List all available BDS datasets |
+| `search_datasets` | Search datasets by keyword |
+| `describe_dataset` | Get column names, types, and distribution statistics for a dataset |
+| `list_schemas` | List datasets with known column type schemas |
+| `get_data_summary` | Quick filtered/grouped statistics without writing R code |
+| `execute_r` | Execute arbitrary R code in a persistent workspace with brightspaceR, dplyr, ggplot2, and more pre-loaded |
+
+The `execute_r` tool is the most powerful -- it lets the assistant write and
+run any R analysis, from simple filtering to complex multi-dataset joins and
+interactive Chart.js visualisations.
+
+## Example conversation
+
+After setup, you can ask questions like:
+
+> **You:** How many students are enrolled in each course?
+>
+> Claude calls `list_datasets` to discover "User Enrollments", then uses
+> `execute_r` to download and count enrollments per course.
+
+> **You:** Show me the grade distribution for STAT101.
+>
+> Claude uses `execute_r` to filter Grade Results, calculate summary
+> statistics, and generate an interactive Chart.js histogram saved to your
+> output directory.
+
+> **You:** Which students haven't logged in for 2 weeks?
+>
+> Claude uses `execute_r` with `bs_identify_at_risk()` to flag inactive
+> students and returns a summary table.
+
+See `vignette("mcp-server-design")` for architecture details, and
+`vignette("mcp-test-script")` for a full set of test prompts to verify
+your setup.
+
+## Troubleshooting
+
+### Server not starting
+
+Run the server manually to see startup messages:
+```bash
+Rscript /path/to/brightspaceR/inst/mcp/server.R
+```
+
+You should see diagnostic output on stderr. Common issues:
+
+- **"cannot open file '...': No such file or directory"** -- check the path
+  in your config
+- **"there is no package called 'brightspaceR'"** -- install the package or
+  set `BRIGHTSPACER_PKG_DIR`
+- **"there is no package called 'pkgload'"** -- install pkgload:
+  `install.packages("pkgload")`
+
+### Authentication failures
+
+The server reuses cached OAuth2 tokens. If authentication fails:
+
+1. Run `bs_auth()` in an interactive R session
+2. Verify with `bs_has_token()` -- should return `TRUE`
+3. Restart Claude Desktop / Claude Code
+
+### No tools appearing in Claude Desktop
+
+- Check that the config file is valid JSON (no trailing commas)
+- Verify `Rscript` is on your PATH: `which Rscript` (macOS/Linux) or
+  `where Rscript.exe` (Windows)
+- Make sure you restarted Claude Desktop after editing the config
+
+### Visualisations not appearing
+
+Check the output directory:
+```r
+# In Claude, ask:
+# "What is the current output directory?"
+# Claude will check via execute_r:
+output_dir
+```
+
+Make sure the directory exists and is writable. You can override it with
+the `BRIGHTSPACER_OUTPUT_DIR` environment variable.

@@ -2,14 +2,13 @@
 .Rhistory
 .RData
 .Ruserdata
-inst/doc
 config.yml
 CLAUDE.md
 
 # Generated output
 brightspaceR_output/
 Rplots.pdf
-*.rds
+brightspaceR_output/*.rds
 
 # Review staging area
 for_review/

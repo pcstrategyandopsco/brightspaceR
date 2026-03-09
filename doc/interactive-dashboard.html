@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Building an Interactive Dashboard</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Building an Interactive Dashboard</h1>
+
+
+
+<p>This article shows how to build a self-contained HTML dashboard from
+Brightspace data using R Markdown and Chart.js. The result is a single
+HTML file you can open in any browser, share with colleagues, or host on
+a web server – no R or Shiny required to view it.</p>
+<div id="strategy" class="section level2">
+<h2>Strategy</h2>
+<p>R Markdown is ideal for this: R chunks compute and aggregate data,
+then knitr’s inline R expressions inject the results directly into
+Chart.js JavaScript blocks. knitr knits the whole thing into a single
+self-contained HTML file.</p>
+</div>
+<div id="step-1-create-the-rmd-template" class="section level2">
+<h2>Step 1: Create the Rmd template</h2>
+<p>Create a file called <code>dashboard.Rmd</code> with this YAML front
+matter. The <code>params</code> block lets you render the same template
+for different date ranges.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="pp">---</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">title</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;Brightspace LMS Dashboard&quot;</span></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="fu">output</span><span class="kw">:</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="at">  </span><span class="fu">html_document</span><span class="kw">:</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="at">    </span><span class="fu">self_contained</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="at">    </span><span class="fu">theme</span><span class="kw">:</span><span class="at"> </span><span class="ch">null</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="fu">params</span><span class="kw">:</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="at">  </span><span class="fu">from_date</span><span class="kw">:</span><span class="at"> !r Sys.Date() - 365</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="at">  </span><span class="fu">to_date</span><span class="kw">:</span><span class="at"> !r Sys.Date()</span></span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a><span class="pp">---</span></span></code></pre></div>
+</div>
+<div id="step-2-data-preparation-chunk" class="section level2">
+<h2>Step 2: Data preparation chunk</h2>
+<p>Add a hidden R chunk that loads and aggregates data. This chunk runs
+but produces no visible output (<code>include=FALSE</code>).</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># This chunk uses include=FALSE in the actual Rmd</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="fu">library</span>(brightspaceR)</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="fu">library</span>(lubridate)</span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="fu">library</span>(jsonlite)</span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="co"># Helpers: convert R vectors to JS array literals</span></span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>js_labels <span class="ot">&lt;-</span> <span class="cf">function</span>(x) <span class="fu">toJSON</span>(<span class="fu">as.character</span>(x), <span class="at">auto_unbox =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>js_values <span class="ot">&lt;-</span> <span class="cf">function</span>(x) <span class="fu">toJSON</span>(<span class="fu">as.numeric</span>(x), <span class="at">auto_unbox =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="co"># Fetch datasets</span></span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a>enrollments <span class="ot">&lt;-</span> <span class="fu">bs_get_dataset</span>(<span class="st">&quot;User Enrollments&quot;</span>)</span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a>roles       <span class="ot">&lt;-</span> <span class="fu">bs_get_dataset</span>(<span class="st">&quot;Role Details&quot;</span>)</span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a>grades      <span class="ot">&lt;-</span> <span class="fu">bs_get_dataset</span>(<span class="st">&quot;Grade Results&quot;</span>)</span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a>org_units   <span class="ot">&lt;-</span> <span class="fu">bs_get_dataset</span>(<span class="st">&quot;Org Units&quot;</span>)</span>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a>users       <span class="ot">&lt;-</span> <span class="fu">bs_get_dataset</span>(<span class="st">&quot;Users&quot;</span>)</span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a></span>
+<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a><span class="co"># Apply date filter from params</span></span>
+<span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a>enrollments <span class="ot">&lt;-</span> enrollments <span class="sc">|&gt;</span></span>
+<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a>  <span class="fu">filter</span>(</span>
+<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a>    <span class="fu">as.Date</span>(enrollment_date) <span class="sc">&gt;=</span> params<span class="sc">$</span>from_date,</span>
+<span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a>    <span class="fu">as.Date</span>(enrollment_date) <span class="sc">&lt;=</span> params<span class="sc">$</span>to_date</span>
+<span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a>  )</span>
+<span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a></span>
+<span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a><span class="co"># KPIs</span></span>
+<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a>total_users <span class="ot">&lt;-</span> <span class="fu">format</span>(<span class="fu">nrow</span>(users), <span class="at">big.mark =</span> <span class="st">&quot;,&quot;</span>)</span>
+<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a>total_enrol <span class="ot">&lt;-</span> <span class="fu">format</span>(<span class="fu">nrow</span>(enrollments), <span class="at">big.mark =</span> <span class="st">&quot;,&quot;</span>)</span>
+<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a>n_courses   <span class="ot">&lt;-</span> <span class="fu">format</span>(</span>
+<span id="cb2-29"><a href="#cb2-29" tabindex="-1"></a>  <span class="fu">n_distinct</span>(org_units<span class="sc">$</span>org_unit_id[org_units<span class="sc">$</span>type <span class="sc">==</span> <span class="st">&quot;Course Offering&quot;</span>]),</span>
+<span id="cb2-30"><a href="#cb2-30" tabindex="-1"></a>  <span class="at">big.mark =</span> <span class="st">&quot;,&quot;</span></span>
+<span id="cb2-31"><a href="#cb2-31" tabindex="-1"></a>)</span>
+<span id="cb2-32"><a href="#cb2-32" tabindex="-1"></a>avg_grade <span class="ot">&lt;-</span> grades <span class="sc">|&gt;</span></span>
+<span id="cb2-33"><a href="#cb2-33" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(points_numerator), points_numerator <span class="sc">&gt;=</span> <span class="dv">0</span>) <span class="sc">|&gt;</span></span>
+<span id="cb2-34"><a href="#cb2-34" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">m =</span> <span class="fu">round</span>(<span class="fu">mean</span>(points_numerator, <span class="at">na.rm =</span> <span class="cn">TRUE</span>), <span class="dv">1</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb2-35"><a href="#cb2-35" tabindex="-1"></a>  <span class="fu">pull</span>(m)</span>
+<span id="cb2-36"><a href="#cb2-36" tabindex="-1"></a></span>
+<span id="cb2-37"><a href="#cb2-37" tabindex="-1"></a><span class="co"># Chart data</span></span>
+<span id="cb2-38"><a href="#cb2-38" tabindex="-1"></a>role_counts <span class="ot">&lt;-</span> enrollments <span class="sc">|&gt;</span></span>
+<span id="cb2-39"><a href="#cb2-39" tabindex="-1"></a>  <span class="fu">bs_join_enrollments_roles</span>(roles) <span class="sc">|&gt;</span></span>
+<span id="cb2-40"><a href="#cb2-40" tabindex="-1"></a>  <span class="fu">count</span>(role_name, <span class="at">sort =</span> <span class="cn">TRUE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb2-41"><a href="#cb2-41" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">8</span>)</span>
+<span id="cb2-42"><a href="#cb2-42" tabindex="-1"></a></span>
+<span id="cb2-43"><a href="#cb2-43" tabindex="-1"></a>monthly_trend <span class="ot">&lt;-</span> enrollments <span class="sc">|&gt;</span></span>
+<span id="cb2-44"><a href="#cb2-44" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">month =</span> <span class="fu">floor_date</span>(<span class="fu">as.Date</span>(enrollment_date), <span class="st">&quot;month&quot;</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb2-45"><a href="#cb2-45" tabindex="-1"></a>  <span class="fu">count</span>(month) <span class="sc">|&gt;</span></span>
+<span id="cb2-46"><a href="#cb2-46" tabindex="-1"></a>  <span class="fu">arrange</span>(month)</span>
+<span id="cb2-47"><a href="#cb2-47" tabindex="-1"></a></span>
+<span id="cb2-48"><a href="#cb2-48" tabindex="-1"></a>grade_dist <span class="ot">&lt;-</span> grades <span class="sc">|&gt;</span></span>
+<span id="cb2-49"><a href="#cb2-49" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(points_numerator), points_numerator <span class="sc">&gt;=</span> <span class="dv">0</span>) <span class="sc">|&gt;</span></span>
+<span id="cb2-50"><a href="#cb2-50" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">bracket =</span> <span class="fu">cut</span>(points_numerator,</span>
+<span id="cb2-51"><a href="#cb2-51" tabindex="-1"></a>    <span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="dv">100</span>, <span class="dv">10</span>), <span class="at">include.lowest =</span> <span class="cn">TRUE</span>, <span class="at">right =</span> <span class="cn">FALSE</span></span>
+<span id="cb2-52"><a href="#cb2-52" tabindex="-1"></a>  )) <span class="sc">|&gt;</span></span>
+<span id="cb2-53"><a href="#cb2-53" tabindex="-1"></a>  <span class="fu">count</span>(bracket) <span class="sc">|&gt;</span></span>
+<span id="cb2-54"><a href="#cb2-54" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(bracket))</span>
+<span id="cb2-55"><a href="#cb2-55" tabindex="-1"></a></span>
+<span id="cb2-56"><a href="#cb2-56" tabindex="-1"></a>top_courses <span class="ot">&lt;-</span> enrollments <span class="sc">|&gt;</span></span>
+<span id="cb2-57"><a href="#cb2-57" tabindex="-1"></a>  <span class="fu">bs_join_enrollments_orgunits</span>(org_units) <span class="sc">|&gt;</span></span>
+<span id="cb2-58"><a href="#cb2-58" tabindex="-1"></a>  <span class="fu">filter</span>(type <span class="sc">==</span> <span class="st">&quot;Course Offering&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb2-59"><a href="#cb2-59" tabindex="-1"></a>  <span class="fu">count</span>(name, <span class="at">sort =</span> <span class="cn">TRUE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb2-60"><a href="#cb2-60" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span></code></pre></div>
+</div>
+<div id="step-3-html-layout-with-inline-r" class="section level2">
+<h2>Step 3: HTML layout with inline R</h2>
+<p>Below the data chunk, add raw HTML for the dashboard layout. knitr
+evaluates inline R expressions everywhere in the document – including
+inside HTML tags and <code>&lt;script&gt;</code> blocks. The syntax is a
+backtick, the letter <code>r</code>, a space, an R expression, and a
+closing backtick.</p>
+<p>The KPI cards use inline R to inject computed values. For example,
+writing the inline R syntax in the HTML outputs the formatted
+number:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="dt">&lt;</span><span class="kw">div</span><span class="ot"> class</span><span class="op">=</span><span class="st">&quot;kpis&quot;</span><span class="dt">&gt;</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="dt">&lt;</span><span class="kw">div</span><span class="ot"> class</span><span class="op">=</span><span class="st">&quot;kpi&quot;</span><span class="dt">&gt;</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>    <span class="dt">&lt;</span><span class="kw">div</span><span class="ot"> class</span><span class="op">=</span><span class="st">&quot;value&quot;</span><span class="ot"> style</span><span class="op">=</span><span class="st">&quot;color:#818cf8&quot;</span><span class="dt">&gt;</span>INLINE_R: total_users<span class="dt">&lt;/</span><span class="kw">div</span><span class="dt">&gt;</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>    <span class="dt">&lt;</span><span class="kw">div</span><span class="ot"> class</span><span class="op">=</span><span class="st">&quot;label&quot;</span><span class="dt">&gt;</span>Total Users<span class="dt">&lt;/</span><span class="kw">div</span><span class="dt">&gt;</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>  <span class="dt">&lt;/</span><span class="kw">div</span><span class="dt">&gt;</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>  <span class="dt">&lt;</span><span class="kw">div</span><span class="ot"> class</span><span class="op">=</span><span class="st">&quot;kpi&quot;</span><span class="dt">&gt;</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>    <span class="dt">&lt;</span><span class="kw">div</span><span class="ot"> class</span><span class="op">=</span><span class="st">&quot;value&quot;</span><span class="ot"> style</span><span class="op">=</span><span class="st">&quot;color:#38bdf8&quot;</span><span class="dt">&gt;</span>INLINE_R: total_enrol<span class="dt">&lt;/</span><span class="kw">div</span><span class="dt">&gt;</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>    <span class="dt">&lt;</span><span class="kw">div</span><span class="ot"> class</span><span class="op">=</span><span class="st">&quot;label&quot;</span><span class="dt">&gt;</span>Enrollments<span class="dt">&lt;/</span><span class="kw">div</span><span class="dt">&gt;</span></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>  <span class="dt">&lt;/</span><span class="kw">div</span><span class="dt">&gt;</span></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>  <span class="co">&lt;!-- ... same pattern for n_courses, avg_grade --&gt;</span></span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="dt">&lt;/</span><span class="kw">div</span><span class="dt">&gt;</span></span></code></pre></div>
+<p>Where <code>INLINE_R: total_users</code> represents knitr’s inline R
+syntax: a backtick, the letter r, a space, the expression, and a closing
+backtick. knitr replaces these with the evaluated value at render
+time.</p>
+<p>The chart grid contains <code>&lt;canvas&gt;</code> elements for
+Chart.js:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode html"><code class="sourceCode html"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="dt">&lt;</span><span class="kw">div</span><span class="ot"> class</span><span class="op">=</span><span class="st">&quot;grid&quot;</span><span class="dt">&gt;</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  <span class="dt">&lt;</span><span class="kw">div</span><span class="ot"> class</span><span class="op">=</span><span class="st">&quot;card&quot;</span><span class="dt">&gt;</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>    <span class="dt">&lt;</span><span class="kw">h2</span><span class="dt">&gt;</span>Enrollments by Role<span class="dt">&lt;/</span><span class="kw">h2</span><span class="dt">&gt;</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>    <span class="dt">&lt;</span><span class="kw">canvas</span><span class="ot"> id</span><span class="op">=</span><span class="st">&quot;roleChart&quot;</span><span class="dt">&gt;&lt;/</span><span class="kw">canvas</span><span class="dt">&gt;</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>  <span class="dt">&lt;/</span><span class="kw">div</span><span class="dt">&gt;</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>  <span class="dt">&lt;</span><span class="kw">div</span><span class="ot"> class</span><span class="op">=</span><span class="st">&quot;card&quot;</span><span class="dt">&gt;</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>    <span class="dt">&lt;</span><span class="kw">h2</span><span class="dt">&gt;</span>Monthly Enrollment Trend<span class="dt">&lt;/</span><span class="kw">h2</span><span class="dt">&gt;</span></span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>    <span class="dt">&lt;</span><span class="kw">canvas</span><span class="ot"> id</span><span class="op">=</span><span class="st">&quot;trendChart&quot;</span><span class="dt">&gt;&lt;/</span><span class="kw">canvas</span><span class="dt">&gt;</span></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>  <span class="dt">&lt;/</span><span class="kw">div</span><span class="dt">&gt;</span></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>  <span class="dt">&lt;</span><span class="kw">div</span><span class="ot"> class</span><span class="op">=</span><span class="st">&quot;card&quot;</span><span class="dt">&gt;</span></span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>    <span class="dt">&lt;</span><span class="kw">h2</span><span class="dt">&gt;</span>Grade Distribution<span class="dt">&lt;/</span><span class="kw">h2</span><span class="dt">&gt;</span></span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a>    <span class="dt">&lt;</span><span class="kw">canvas</span><span class="ot"> id</span><span class="op">=</span><span class="st">&quot;gradeChart&quot;</span><span class="dt">&gt;&lt;/</span><span class="kw">canvas</span><span class="dt">&gt;</span></span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a>  <span class="dt">&lt;/</span><span class="kw">div</span><span class="dt">&gt;</span></span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a>  <span class="dt">&lt;</span><span class="kw">div</span><span class="ot"> class</span><span class="op">=</span><span class="st">&quot;card&quot;</span><span class="dt">&gt;</span></span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a>    <span class="dt">&lt;</span><span class="kw">h2</span><span class="dt">&gt;</span>Top 10 Courses<span class="dt">&lt;/</span><span class="kw">h2</span><span class="dt">&gt;</span></span>
+<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a>    <span class="dt">&lt;</span><span class="kw">canvas</span><span class="ot"> id</span><span class="op">=</span><span class="st">&quot;courseChart&quot;</span><span class="dt">&gt;&lt;/</span><span class="kw">canvas</span><span class="dt">&gt;</span></span>
+<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a>  <span class="dt">&lt;/</span><span class="kw">div</span><span class="dt">&gt;</span></span>
+<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a><span class="dt">&lt;/</span><span class="kw">div</span><span class="dt">&gt;</span></span></code></pre></div>
+</div>
+<div id="step-4-chart.js-with-inline-r-data" class="section level2">
+<h2>Step 4: Chart.js with inline R data</h2>
+<p>Load Chart.js from CDN, then initialise each chart. The key
+technique: inline R expressions inside <code>&lt;script&gt;</code> tags
+inject R data as JavaScript arrays.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="co"># In the Rmd, this is raw HTML (not an R chunk).</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="co"># Inline R expressions like `r js_labels(...)` are replaced by knitr</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="co"># with the evaluated JSON output before the HTML is finalised.</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co"># Example Chart.js initialisation:</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co"># &lt;script src=&quot;https://cdn.jsdelivr.net/npm/chart.js&quot;&gt;&lt;/script&gt;</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># &lt;script&gt;</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="co"># new Chart(&quot;roleChart&quot;, {</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="co">#   type: &quot;doughnut&quot;,</span></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="co">#   data: {</span></span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a><span class="co">#     labels: `r js_labels(role_counts$role_name)`,</span></span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a><span class="co">#     datasets: [{</span></span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a><span class="co">#       data: `r js_values(role_counts$n)`,</span></span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a><span class="co">#       backgroundColor: [&quot;#38bdf8&quot;,&quot;#818cf8&quot;,&quot;#f59e0b&quot;,&quot;#34d399&quot;]</span></span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a><span class="co">#     }]</span></span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a><span class="co">#   }</span></span>
+<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a><span class="co"># });</span></span>
+<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a><span class="co"># &lt;/script&gt;</span></span></code></pre></div>
+<p>When knitr processes the Rmd, the inline R expressions are replaced
+with their evaluated results:</p>
+<pre><code>Before knitr:
+  labels: INLINE_R: js_labels(role_counts$role_name)
+
+After knitr:
+  labels: [&quot;Student&quot;,&quot;Instructor&quot;,&quot;TA&quot;,&quot;Observer&quot;]</code></pre>
+<p>The <code>js_labels()</code> and <code>js_values()</code> helpers use
+<code>jsonlite::toJSON()</code> to produce valid JavaScript array
+literals. This is safer than manual <code>paste0()</code> because
+<code>toJSON()</code> handles quoting, escaping, and edge cases
+automatically.</p>
+<p>The same pattern applies to each chart: line charts for trends, bar
+charts for distributions, horizontal bars for top courses. Each
+<code>new Chart()</code> call references a <code>&lt;canvas&gt;</code>
+id and uses inline R to inject labels and data arrays.</p>
+</div>
+<div id="step-5-css-styling" class="section level2">
+<h2>Step 5: CSS styling</h2>
+<p>Add a <code>&lt;style&gt;</code> block at the top of the HTML section
+for the dashboard layout:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode css"><code class="sourceCode css"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>&lt;style<span class="op">&gt;</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  <span class="op">*</span> { <span class="kw">box-sizing</span><span class="ch">:</span> <span class="dv">border-box</span><span class="op">;</span> <span class="kw">margin</span><span class="ch">:</span> <span class="dv">0</span><span class="op">;</span> <span class="kw">padding</span><span class="ch">:</span> <span class="dv">0</span><span class="op">;</span> }</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  body { <span class="kw">font-family</span><span class="ch">:</span> <span class="dv">system-ui</span><span class="op">,</span> <span class="dv">sans-serif</span><span class="op">;</span> <span class="kw">background</span><span class="ch">:</span> <span class="cn">#f0f2f5</span><span class="op">;</span> }</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>  <span class="fu">.header</span> { <span class="kw">background</span><span class="ch">:</span> <span class="fu">linear-gradient(</span><span class="dv">135</span><span class="dt">deg</span><span class="op">,</span> <span class="cn">#1a1a2e</span><span class="op">,</span> <span class="cn">#16213e</span><span class="fu">)</span><span class="op">;</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>            <span class="kw">color</span><span class="ch">:</span> <span class="cn">white</span><span class="op">;</span> <span class="kw">padding</span><span class="ch">:</span> <span class="dv">2</span><span class="dt">rem</span><span class="op">;</span> }</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>  <span class="fu">.kpis</span> { <span class="kw">display</span><span class="ch">:</span> <span class="dv">grid</span><span class="op">;</span> <span class="kw">grid-template-columns</span><span class="ch">:</span> <span class="fu">repeat(</span><span class="dv">4</span><span class="op">,</span> <span class="dv">1</span><span class="dt">fr</span><span class="fu">)</span><span class="op">;</span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>          <span class="kw">gap</span><span class="ch">:</span> <span class="dv">1</span><span class="dt">rem</span><span class="op">;</span> <span class="kw">padding</span><span class="ch">:</span> <span class="dv">1.5</span><span class="dt">rem</span><span class="op">;</span> <span class="kw">max-width</span><span class="ch">:</span> <span class="dv">1200</span><span class="dt">px</span><span class="op">;</span> <span class="kw">margin</span><span class="ch">:</span> <span class="dv">0</span> <span class="bu">auto</span><span class="op">;</span> }</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>  <span class="fu">.kpi</span> { <span class="kw">background</span><span class="ch">:</span> <span class="cn">white</span><span class="op">;</span> <span class="kw">border-radius</span><span class="ch">:</span> <span class="dv">12</span><span class="dt">px</span><span class="op">;</span> <span class="kw">padding</span><span class="ch">:</span> <span class="dv">1.2</span><span class="dt">rem</span><span class="op">;</span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>         <span class="kw">text-align</span><span class="ch">:</span> <span class="dv">center</span><span class="op">;</span> }</span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>  <span class="fu">.kpi</span> <span class="fu">.value</span> { <span class="kw">font-size</span><span class="ch">:</span> <span class="dv">2</span><span class="dt">rem</span><span class="op">;</span> <span class="kw">font-weight</span><span class="ch">:</span> <span class="dv">700</span><span class="op">;</span> }</span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>  <span class="fu">.grid</span> { <span class="kw">display</span><span class="ch">:</span> <span class="dv">grid</span><span class="op">;</span> <span class="kw">grid-template-columns</span><span class="ch">:</span> <span class="fu">repeat(</span><span class="dv">auto-fit</span><span class="op">,</span> <span class="fu">minmax(</span><span class="dv">480</span><span class="dt">px</span><span class="op">,</span> <span class="dv">1</span><span class="dt">fr</span><span class="fu">))</span><span class="op">;</span></span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>          <span class="kw">gap</span><span class="ch">:</span> <span class="dv">1.5</span><span class="dt">rem</span><span class="op">;</span> <span class="kw">padding</span><span class="ch">:</span> <span class="dv">0</span> <span class="dv">1.5</span><span class="dt">rem</span> <span class="dv">1.5</span><span class="dt">rem</span><span class="op">;</span> <span class="kw">max-width</span><span class="ch">:</span> <span class="dv">1200</span><span class="dt">px</span><span class="op">;</span> <span class="kw">margin</span><span class="ch">:</span> <span class="dv">0</span> <span class="bu">auto</span><span class="op">;</span> }</span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a>  <span class="fu">.card</span> { <span class="kw">background</span><span class="ch">:</span> <span class="cn">white</span><span class="op">;</span> <span class="kw">border-radius</span><span class="ch">:</span> <span class="dv">12</span><span class="dt">px</span><span class="op">;</span> <span class="kw">padding</span><span class="ch">:</span> <span class="dv">1.5</span><span class="dt">rem</span><span class="op">;</span> }</span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a>  <span class="fu">.card</span> h2 { <span class="kw">font-size</span><span class="ch">:</span> <span class="dv">1</span><span class="dt">rem</span><span class="op">;</span> <span class="kw">color</span><span class="ch">:</span> <span class="cn">#475569</span><span class="op">;</span> <span class="kw">margin-bottom</span><span class="ch">:</span> <span class="dv">1</span><span class="dt">rem</span><span class="op">;</span> }</span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a>&lt;/style<span class="op">&gt;</span></span></code></pre></div>
+</div>
+<div id="rendering" class="section level2">
+<h2>Rendering</h2>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="co"># Default: last 12 months</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>rmarkdown<span class="sc">::</span><span class="fu">render</span>(<span class="st">&quot;dashboard.Rmd&quot;</span>,</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  <span class="at">output_file =</span> <span class="st">&quot;brightspaceR_output/dashboard.html&quot;</span>)</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="fu">browseURL</span>(<span class="st">&quot;brightspaceR_output/dashboard.html&quot;</span>)</span></code></pre></div>
+</div>
+<div id="parameterised-reports" class="section level2">
+<h2>Parameterised reports</h2>
+<p>Render different versions from the same template without editing the
+Rmd:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="co"># This semester</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>rmarkdown<span class="sc">::</span><span class="fu">render</span>(<span class="st">&quot;dashboard.Rmd&quot;</span>,</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>  <span class="at">params =</span> <span class="fu">list</span>(<span class="at">from_date =</span> <span class="fu">as.Date</span>(<span class="st">&quot;2026-01-01&quot;</span>), <span class="at">to_date =</span> <span class="fu">Sys.Date</span>()),</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>  <span class="at">output_file =</span> <span class="st">&quot;brightspaceR_output/dashboard_s1_2026.html&quot;</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>)</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="co"># Last year</span></span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>rmarkdown<span class="sc">::</span><span class="fu">render</span>(<span class="st">&quot;dashboard.Rmd&quot;</span>,</span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>  <span class="at">params =</span> <span class="fu">list</span>(<span class="at">from_date =</span> <span class="fu">as.Date</span>(<span class="st">&quot;2025-01-01&quot;</span>), <span class="at">to_date =</span> <span class="fu">as.Date</span>(<span class="st">&quot;2025-12-31&quot;</span>)),</span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>  <span class="at">output_file =</span> <span class="st">&quot;brightspaceR_output/dashboard_2025.html&quot;</span></span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a>)</span></code></pre></div>
+<p>This makes it straightforward to generate quarterly or per-semester
+reports from a single template.</p>
+</div>
+<div id="using-with-the-mcp-server" class="section level2">
+<h2>Using with the MCP server</h2>
+<p>The MCP server’s <code>execute_r</code> tool can use either
+approach:</p>
+<ol style="list-style-type: decimal">
+<li><strong>Rmd rendering</strong> (recommended for complex dashboards):
+Write the Rmd file from <code>execute_r</code>, then call
+<code>rmarkdown::render()</code>. This produces the cleanest output and
+supports params.</li>
+<li><strong>HTML string</strong> (faster, simpler): Build HTML with
+<code>paste0()</code> and <code>writeLines()</code>. No Rmd dependency,
+but harder to maintain for complex layouts.</li>
+</ol>
+<p>Both write to the output directory and can be opened with
+<code>browseURL()</code>.</p>
+</div>
+<div id="why-chart.js-instead-of-plotly" class="section level2">
+<h2>Why Chart.js instead of plotly?</h2>
+<table>
+<colgroup>
+<col width="33%" />
+<col width="33%" />
+<col width="33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th>Chart.js</th>
+<th>plotly</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Dependencies</strong></td>
+<td>None (CDN)</td>
+<td><code>plotly</code> R package + htmlwidgets</td>
+</tr>
+<tr class="even">
+<td><strong>File size</strong></td>
+<td>~80KB (CDN-loaded)</td>
+<td>3-5MB per file (self-contained)</td>
+</tr>
+<tr class="odd">
+<td><strong>Sharing</strong></td>
+<td>Single HTML, opens anywhere</td>
+<td>Single HTML, but large</td>
+</tr>
+<tr class="even">
+<td><strong>R Markdown</strong></td>
+<td>Works via inline R in <code>&lt;script&gt;</code></td>
+<td>Works via <code>plotly::ggplotly()</code></td>
+</tr>
+<tr class="odd">
+<td><strong>MCP compatible</strong></td>
+<td>Yes (plain HTML string)</td>
+<td>No (<code>htmlwidgets</code> needs R session)</td>
+</tr>
+<tr class="even">
+<td><strong>Chart types</strong></td>
+<td>Bar, line, doughnut, scatter, radar</td>
+<td>Everything, including 3D</td>
+</tr>
+</tbody>
+</table>
+<p>For most LMS analytics – bar charts, line trends, doughnut breakdowns
+– Chart.js covers the use cases with zero R-side dependencies.</p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

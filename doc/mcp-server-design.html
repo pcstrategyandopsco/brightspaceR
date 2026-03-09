@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>MCP Server: Design and Implementation</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">MCP Server: Design and Implementation</h1>
+
+
+
+<div id="the-problem" class="section level2">
+<h2>The Problem</h2>
+<p>The original MCP server shipped 9 tools that mostly serialized raw
+data rows as JSON and sent them to Claude. This created three
+compounding problems:</p>
+<ol style="list-style-type: decimal">
+<li><strong>Size</strong>: A single <code>get_dataset</code> call on a
+moderately large table (e.g., Grade Results with 50K rows) would hit the
+MCP protocol’s 1MB response limit, forcing artificial row caps.</li>
+<li><strong>Waste</strong>: Claude received thousands of JSON rows it
+couldn’t meaningfully compute on. Every “what’s the average grade?”
+question required the LLM to mentally sum and divide across a JSON
+array.</li>
+<li><strong>Rigidity</strong>: Dedicated tools like
+<code>student_summary</code> and <code>course_summary</code> hard-coded
+specific analysis patterns. Any question outside those patterns required
+a new tool or awkward workarounds.</li>
+</ol>
+<p>The redesign inverts the architecture: Claude writes R code, the
+server executes it in a persistent workspace, and returns compact
+results – text summaries and file-based visualizations.</p>
+</div>
+<div id="design-principles" class="section level2">
+<h2>Design Principles</h2>
+<div id="compute-where-compute-belongs" class="section level3">
+<h3>Compute where compute belongs</h3>
+<p>R is purpose-built for data manipulation. Claude is purpose-built for
+reasoning about what manipulation to do. The <code>execute_r</code> tool
+bridges these: Claude writes a dplyr pipeline, ggplot visualization, or
+statistical test; the server evaluates it and returns the result. No raw
+data crosses the wire unless explicitly requested.</p>
+</div>
+<div id="visualization-interactive-html-first-static-png-fallback" class="section level3">
+<h3>Visualization: interactive HTML first, static PNG fallback</h3>
+<p>The preferred visualization path uses Chart.js injected into
+self-contained HTML files:</p>
+<ol style="list-style-type: decimal">
+<li><code>execute_r</code> aggregates data in R (counts, means,
+distributions)</li>
+<li>Claude builds an HTML string with Chart.js loaded from CDN</li>
+<li><code>writeLines()</code> saves it to the output directory</li>
+<li>The user opens the HTML file in their browser</li>
+</ol>
+<pre><code>execute_r → aggregate data → paste0(Chart.js HTML) → writeLines()
+    ↓
+Interactive chart in browser (tooltips, hover, responsive)</code></pre>
+<p>As a fallback for cases where the user explicitly requests a PNG or a
+chart type Chart.js cannot handle, <code>execute_r</code> supports
+returning ggplot objects directly. When detected, the server renders the
+plot to a PNG file and generates an HTML viewer wrapper. Both files are
+saved to the configured output directory.</p>
+</div>
+<div id="outcome-oriented-tools" class="section level3">
+<h3>Outcome-oriented tools</h3>
+<p>The old server had tools organized around API operations:
+<code>get_dataset</code>, <code>join_datasets</code>,
+<code>student_summary</code>. The redesign organizes around user
+goals:</p>
+<table>
+<colgroup>
+<col width="33%" />
+<col width="33%" />
+<col width="33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Old (9 tools)</th>
+<th>New (7 tools)</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>get_dataset</code></td>
+<td><code>execute_r</code></td>
+<td>Claude writes
+<code>bs_get_dataset(&quot;Users&quot;) %&gt;% head(10)</code></td>
+</tr>
+<tr class="even">
+<td><code>student_summary</code></td>
+<td><code>execute_r</code></td>
+<td>Claude writes the exact summary needed</td>
+</tr>
+<tr class="odd">
+<td><code>course_summary</code></td>
+<td><code>execute_r</code></td>
+<td>Claude writes the exact aggregation</td>
+</tr>
+<tr class="even">
+<td><code>join_datasets</code></td>
+<td><code>execute_r</code></td>
+<td>Claude calls <code>bs_join()</code> directly</td>
+</tr>
+<tr class="odd">
+<td><code>describe_dataset</code></td>
+<td><code>describe_dataset</code> (enhanced)</td>
+<td>Now returns column stats, not sample rows</td>
+</tr>
+<tr class="even">
+<td>–</td>
+<td><code>get_data_summary</code></td>
+<td>Quick filter/group stats without writing R</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="progressive-disclosure" class="section level3">
+<h3>Progressive disclosure</h3>
+<p>Every response from <code>describe_dataset</code> and
+<code>get_data_summary</code> ends with a hint:</p>
+<blockquote>
+<p>“Use execute_r for custom analysis. Available: bs_get_dataset(),
+bs_join(), dplyr verbs.”</p>
+</blockquote>
+<p>This teaches the model (and the user reading the transcript) that
+there’s a more powerful tool available when the pre-built summaries
+aren’t enough.</p>
+</div>
+<div id="server-instructions" class="section level3">
+<h3>Server instructions</h3>
+<p>The MCP <code>initialize</code> handshake includes an
+<code>instructions</code> field – a block of text that tells Claude the
+recommended workflow before any tools are called:</p>
+<pre><code>1. Use list_datasets or search_datasets to discover data
+2. Use describe_dataset to understand columns and distributions
+3. Use get_data_summary with filter_by/group_by for quick stats
+4. Use execute_r for custom analysis</code></pre>
+<p>The instructions also include performance guidelines, the Chart.js
+HTML pattern, available packages (dplyr, tidyr, ggplot2, lubridate,
+scales), and the date axis gotcha for ggplot2.</p>
+</div>
+</div>
+<div id="architecture" class="section level2">
+<h2>Architecture</h2>
+<div id="persistent-workspace" class="section level3">
+<h3>Persistent workspace</h3>
+<p>The server creates a <code>.mcp_workspace</code> environment at
+startup with <code>dplyr</code>, <code>tidyr</code>,
+<code>ggplot2</code>, <code>lubridate</code>, and <code>scales</code>
+pre-loaded. Every <code>execute_r</code> call evaluates code in this
+environment, so variables persist between calls:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co"># Call 1: load and filter</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>users <span class="ot">&lt;-</span> <span class="fu">bs_get_dataset</span>(<span class="st">&quot;Users&quot;</span>) <span class="sc">%&gt;%</span> <span class="fu">filter</span>(role_name <span class="sc">==</span> <span class="st">&quot;Student&quot;</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co"># Call 2: uses `users` from previous call</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>users <span class="sc">%&gt;%</span> <span class="fu">count</span>(org_unit_id, <span class="at">sort =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<p>The workspace also exposes <code>output_dir</code> – the path to the
+configured output directory – so Chart.js HTML files can be written
+there directly.</p>
+</div>
+<div id="output-directory" class="section level3">
+<h3>Output directory</h3>
+<p>Visualizations are written to a configurable output directory.
+Resolution order:</p>
+<ol style="list-style-type: decimal">
+<li><code>BRIGHTSPACER_OUTPUT_DIR</code> environment variable (if
+set)</li>
+<li><code>&lt;package_root&gt;/brightspaceR_output</code> (development
+mode)</li>
+<li><code>&lt;working_directory&gt;/brightspaceR_output</code>
+(fallback)</li>
+<li><code>&lt;temp_dir&gt;/brightspaceR_output</code> (last resort if
+directory creation fails)</li>
+</ol>
+<p>The path is normalised with <code>normalizePath()</code> and logged
+at startup. If creation fails, the server falls back gracefully and logs
+a warning.</p>
+</div>
+<div id="smart-result-formatting" class="section level3">
+<h3>Smart result formatting</h3>
+<p><code>handle_execute_r</code> inspects the result type and formats
+accordingly:</p>
+<table>
+<colgroup>
+<col width="50%" />
+<col width="50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Result type</th>
+<th>Formatting</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>data.frame</code> with &lt;=50 rows</td>
+<td>Full text table via <code>print()</code></td>
+</tr>
+<tr class="even">
+<td><code>data.frame</code> with &gt;50 rows</td>
+<td><code>head(20)</code> + “… N more rows” hint</td>
+</tr>
+<tr class="odd">
+<td><code>gg</code>/<code>ggplot</code> object</td>
+<td>Render to 900x600 PNG + HTML viewer, return file paths</td>
+</tr>
+<tr class="even">
+<td>Character ending in
+<code>.html</code>/<code>.png</code>/<code>.pdf</code>/<code>.csv</code></td>
+<td>Return as file path</td>
+</tr>
+<tr class="odd">
+<td>Anything else</td>
+<td><code>capture.output(print(x))</code></td>
+</tr>
+<tr class="even">
+<td>Error</td>
+<td><code>isError: TRUE</code> with the error message</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="column-summary-helper" class="section level3">
+<h3>Column summary helper</h3>
+<p><code>summarize_column()</code> is a shared function used by both
+<code>describe_dataset</code> and <code>get_data_summary</code>. It
+produces type-appropriate stats:</p>
+<ul>
+<li><strong>Numeric</strong>: min, max, mean, n_missing</li>
+<li><strong>Character/Factor</strong>: n_unique, top 3 values with
+counts, n_missing</li>
+<li><strong>Logical</strong>: n_true, n_false, n_missing</li>
+<li><strong>Date/POSIXt</strong>: min, max, n_missing</li>
+</ul>
+<p>This replaces the old approach of sending 5 sample rows, which told
+Claude almost nothing about the data distribution.</p>
+</div>
+<div id="response-helpers" class="section level3">
+<h3>Response helpers</h3>
+<p>Composable functions build MCP-compliant responses:</p>
+<ul>
+<li><code>mcp_text(text, audience)</code> – Creates a
+<code>TextContent</code> block with optional <code>audience</code>
+annotation (<code>[&quot;user&quot;]</code> for clean output,
+<code>[&quot;assistant&quot;]</code> for verbose diagnostics like row counts and
+join warnings).</li>
+<li><code>mcp_result(contents, is_error)</code> – Wraps a list of
+content blocks into a tool result. Handles size truncation at
+~800KB.</li>
+</ul>
+</div>
+<div id="size-guard" class="section level3">
+<h3>Size guard</h3>
+<p>The <code>mcp_result()</code> function checks the serialized JSON
+size of every response. If it exceeds 800KB, it finds the first text
+content block and truncates it with a clear message:</p>
+<pre><code>... [TRUNCATED: response exceeded size limit.
+Use head()/filter() to narrow results in execute_r.]</code></pre>
+<p>This is a safety net, not the primary size control. The real size
+control is that <code>execute_r</code> returns computed results (a
+count, a mean, a chart file path) rather than raw data.</p>
+</div>
+<div id="defensive-execution" class="section level3">
+<h3>Defensive execution</h3>
+<p><code>execute_r</code> includes several layers of protection against
+runaway queries:</p>
+<p><strong>30-second timeout</strong>: Every eval is wrapped in
+<code>setTimeLimit(elapsed = 30)</code>. If a Cartesian join or
+unfiltered aggregation over millions of rows hangs, the server kills it
+and returns a clear error: <em>“Execution timed out after 30 seconds.
+Try filtering data earlier or breaking into smaller steps.”</em></p>
+<p><strong>Row-count reporting</strong>: The workspace’s
+<code>bs_get_dataset()</code> wrapper emits a message like
+<code>[Grade Results: 523,041 rows x 12 cols]</code> every time it’s
+called. These messages are captured and returned to Claude as
+assistant-facing context (using <code>audience: [&quot;assistant&quot;]</code>),
+so Claude always knows how big the data it just loaded is – and can
+course-correct before the next operation.</p>
+<p><strong>Large-dataset warnings</strong>: If a dataset exceeds 50K
+rows, the message includes an explicit warning: <em>“WARNING: large
+dataset – filter early to avoid slow operations”</em>. The same applies
+to <code>bs_join()</code> when either input exceeds 50K rows.</p>
+<p><strong>Server instructions</strong>: The <code>initialize</code>
+response tells Claude to always call <code>describe_dataset</code> first
+to check row counts, filter early on large tables, and never return raw
+unfiltered data frames.</p>
+<p>These defenses are layered: instructions guide Claude to do the right
+thing, row-count messages let it self-correct mid-execution, and the
+timeout is the hard backstop.</p>
+</div>
+</div>
+<div id="tool-reference" class="section level2">
+<h2>Tool Reference</h2>
+<div id="discovery-tools" class="section level3">
+<h3>Discovery tools</h3>
+<p><strong><code>list_datasets</code></strong> – Returns all available
+BDS dataset names and descriptions. No parameters.</p>
+<p><strong><code>search_datasets</code></strong> – Case-insensitive
+keyword search across dataset names and descriptions.</p>
+<p><strong><code>auth_status</code></strong> – Reports whether the
+server has a valid Brightspace OAuth token.</p>
+<p><strong><code>list_schemas</code></strong> – Lists registered dataset
+schemas and their key columns (used by <code>bs_join()</code>).</p>
+</div>
+<div id="analysis-tools" class="section level3">
+<h3>Analysis tools</h3>
+<p><strong><code>describe_dataset(name)</code></strong> – Loads a
+dataset and returns per-column summary statistics. The footer suggests
+using <code>execute_r</code> for custom queries.</p>
+<p><strong><code>get_data_summary(dataset, filter_by?, group_by?)</code></strong>
+– The “quick stats” tool. Loads a dataset, optionally filters by
+column-value pairs, optionally groups. Without grouping, returns
+per-column stats. With grouping, returns group counts and numeric column
+means per group. Always suggests <code>execute_r</code> for anything
+more complex.</p>
+<p><strong><code>execute_r(code)</code></strong> – The core tool. Claude
+writes R code as a string, the server evaluates it in the persistent
+workspace, and returns the result. Handles data frames, ggplot objects
+(saved as PNG + HTML), file paths, and arbitrary R objects.</p>
+</div>
+</div>
+<div id="types-of-analysis" class="section level2">
+<h2>Types of Analysis</h2>
+<p>The MCP server is designed for the kinds of questions LMS
+administrators and institutional researchers typically ask. Here are the
+main categories with example prompts.</p>
+<div id="enrollment-analytics" class="section level3">
+<h3>Enrollment analytics</h3>
+<ul>
+<li>“How many students are enrolled this semester vs last
+semester?”</li>
+<li>“Show me enrollment trends by month for the last 2 years”</li>
+<li>“Which courses have the highest drop rates?”</li>
+<li>“Break down enrollments by role – how many students, instructors,
+TAs?”</li>
+</ul>
+</div>
+<div id="grade-performance" class="section level3">
+<h3>Grade performance</h3>
+<ul>
+<li>“What’s the average grade in STAT101?”</li>
+<li>“Show me the grade distribution across all courses as a
+histogram”</li>
+<li>“Which courses have the lowest pass rates (below 50%)?”</li>
+<li>“Compare grade distributions between online and in-person
+sections”</li>
+</ul>
+</div>
+<div id="student-engagement" class="section level3">
+<h3>Student engagement</h3>
+<ul>
+<li>“How many users haven’t logged in for 90 days?”</li>
+<li>“What’s the average content completion rate per course?”</li>
+<li>“Which discussion forums have the most activity?”</li>
+<li>“Show me quiz attempt patterns – when do students take
+quizzes?”</li>
+</ul>
+</div>
+<div id="course-health" class="section level3">
+<h3>Course health</h3>
+<ul>
+<li>“Which courses have no grade items set up?”</li>
+<li>“List courses that haven’t been accessed in 6 months”</li>
+<li>“Show me assignment submission rates by course”</li>
+<li>“Which courses have the most content objects?”</li>
+</ul>
+</div>
+<div id="cross-dataset-joins" class="section level3">
+<h3>Cross-dataset joins</h3>
+<ul>
+<li>“Join users and enrollments to find students enrolled in more than 5
+courses”</li>
+<li>“Correlate discussion post frequency with final grades”</li>
+<li>“Find users with attendance below 80% whose grades are above
+70%”</li>
+</ul>
+</div>
+<div id="reporting-and-dashboards" class="section level3">
+<h3>Reporting and dashboards</h3>
+<ul>
+<li>“Build me a dashboard showing KPIs for this semester”</li>
+<li>“Generate a grade report for all courses in the Business
+faculty”</li>
+<li>“Create a chart showing monthly active users over the past
+year”</li>
+</ul>
+<p>Each of these can be handled through the MCP workflow: discover
+datasets, check column distributions, then write R code that aggregates,
+joins, and visualizes.</p>
+</div>
+</div>
+<div id="typical-conversation-flow" class="section level2">
+<h2>Typical Conversation Flow</h2>
+<pre><code>User: &quot;How are students performing in STAT101?&quot;
+
+Claude thinks: I need to find the course, get grade data, and summarize it.
+
+1. search_datasets(keyword=&quot;grade&quot;)
+   -&gt; Finds &quot;Grade Results&quot;
+
+2. describe_dataset(name=&quot;Grade Results&quot;)
+   -&gt; Sees columns: user_id, org_unit_id, points_numerator, etc.
+   -&gt; Sees row count: 523,041
+
+3. execute_r(code=&quot;&quot;&quot;
+   grades &lt;- bs_get_dataset(&quot;Grade Results&quot;)
+   orgs &lt;- bs_get_dataset(&quot;Org Units&quot;)
+   stat101 &lt;- orgs %&gt;% filter(grepl(&quot;STAT101&quot;, name))
+   grades %&gt;%
+     filter(org_unit_id %in% stat101$org_unit_id) %&gt;%
+     summarise(
+       n_students = n_distinct(user_id),
+       mean_grade = mean(points_numerator, na.rm = TRUE),
+       median_grade = median(points_numerator, na.rm = TRUE)
+     )
+   &quot;&quot;&quot;)
+   -&gt; Returns: tibble with 1 row of summary stats
+
+4. execute_r(code=&quot;&quot;&quot;
+   # Interactive chart
+   grade_dist &lt;- grades %&gt;%
+     filter(org_unit_id %in% stat101$org_unit_id,
+            !is.na(points_numerator)) %&gt;%
+     mutate(bracket = cut(points_numerator,
+       breaks = seq(0, 100, 10), include.lowest = TRUE)) %&gt;%
+     count(bracket)
+
+   html &lt;- paste0(&#39;&lt;!DOCTYPE html&gt;...&lt;script src=\&quot;https://cdn.jsdelivr.net/npm/chart.js\&quot;&gt;&lt;/script&gt;...&#39;)
+   writeLines(html, file.path(output_dir, &#39;stat101_grades.html&#39;))
+   browseURL(file.path(output_dir, &#39;stat101_grades.html&#39;))
+   &quot;&quot;&quot;)
+   -&gt; Opens interactive bar chart in browser</code></pre>
+<p>Note how calls 3 and 4 share variables (<code>grades</code>,
+<code>orgs</code>, <code>stat101</code>) via the persistent workspace.
+Claude computes with R, then builds Chart.js HTML for interactive
+rendering.</p>
+</div>
+<div id="security-considerations" class="section level2">
+<h2>Security Considerations</h2>
+<p><code>execute_r</code> evaluates arbitrary R code. This is
+intentional – the server runs locally, authenticated with the user’s own
+Brightspace credentials. The trust boundary is the same as opening an R
+console. The workspace is sandboxed only in the sense that it’s a child
+environment of <code>globalenv()</code>, not a separate process.</p>
+<p>For production deployments where multiple users share a server,
+<code>execute_r</code> would need process-level isolation (e.g., callr).
+That’s out of scope for the current single-user design.</p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>MCP Server Test Script</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">MCP Server Test Script</h1>
+
+
+
+<p>After restarting the MCP server (or restarting Claude Desktop), paste
+each prompt below into Claude Desktop one at a time. Expected behavior
+is described after each prompt.</p>
+<div id="test-1-auth-check" class="section level2">
+<h2>Test 1: Auth check</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Are you connected to Brightspace?</p>
+</blockquote>
+<p><strong>Expected:</strong> Claude calls <code>auth_status</code>.
+Response shows <code>&quot;authenticated&quot;: true</code>. If false, run
+<code>bs_auth()</code> in an interactive R session first.</p>
+</div>
+<div id="test-2-dataset-discovery" class="section level2">
+<h2>Test 2: Dataset discovery</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>What datasets are available? List them for me.</p>
+</blockquote>
+<p><strong>Expected:</strong> Claude calls <code>list_datasets</code>.
+You see a list of all BDS dataset names with descriptions. Should be
+dozens of datasets.</p>
+</div>
+<div id="test-3-keyword-search" class="section level2">
+<h2>Test 3: Keyword search</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Find any datasets related to grades.</p>
+</blockquote>
+<p><strong>Expected:</strong> Claude calls <code>search_datasets</code>
+with keyword “grade” (or similar). Returns a filtered list – should
+include “Grade Results” and possibly others.</p>
+</div>
+<div id="test-4-dataset-description-with-column-stats" class="section level2">
+<h2>Test 4: Dataset description with column stats</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Describe the Users dataset. What columns does it have?</p>
+</blockquote>
+<p><strong>Expected:</strong> Claude calls <code>describe_dataset</code>
+with name “Users”. Response should show:</p>
+<ul>
+<li>Row count and column count</li>
+<li>Per-column summaries (not sample rows):
+<ul>
+<li>Numeric columns show min/max/mean</li>
+<li>Character columns show n_unique and top 3 values</li>
+<li>Date columns show min/max date range</li>
+</ul></li>
+<li>Footer suggesting <code>execute_r</code></li>
+</ul>
+</div>
+<div id="test-5-simple-execute_r-scalar-result" class="section level2">
+<h2>Test 5: Simple execute_r – scalar result</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>How many users are there in total?</p>
+</blockquote>
+<p><strong>Expected:</strong> Claude calls <code>execute_r</code> with
+something like:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">nrow</span>(<span class="fu">bs_get_dataset</span>(<span class="st">&quot;Users&quot;</span>))</span></code></pre></div>
+<p>Returns a single number. No raw data transfer.</p>
+</div>
+<div id="test-6-execute_r-data-frame-result" class="section level2">
+<h2>Test 6: execute_r – data frame result</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Show me the top 10 most common role names in the User Enrollments
+dataset.</p>
+</blockquote>
+<p><strong>Expected:</strong> Claude calls <code>execute_r</code> with a
+dplyr pipeline like:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">bs_get_dataset</span>(<span class="st">&quot;User Enrollments&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>  <span class="fu">count</span>(role_name, <span class="at">sort =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span></code></pre></div>
+<p>Returns a compact text table (not JSON, not thousands of rows).</p>
+</div>
+<div id="test-7-execute_r-persistent-workspace" class="section level2">
+<h2>Test 7: execute_r – persistent workspace</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Now filter those enrollments to just Students and tell me how many
+there are.</p>
+</blockquote>
+<p><strong>Expected:</strong> Claude uses variables from the previous
+call (or re-loads and filters). The key test is that Claude can
+reference or build on prior work. Should return a count.</p>
+</div>
+<div id="test-8-interactive-chart.js-chart" class="section level2">
+<h2>Test 8: Interactive Chart.js chart</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Create an interactive bar chart showing enrollment counts by
+role.</p>
+</blockquote>
+<p><strong>Expected:</strong> Claude should:</p>
+<ol style="list-style-type: decimal">
+<li>Call <code>execute_r</code> to compute the counts (e.g.,
+<code>count(role_name, sort = TRUE)</code>)</li>
+<li>Build a self-contained HTML string with Chart.js from CDN</li>
+<li>Write it with <code>writeLines()</code> to the output directory</li>
+<li>Call <code>browseURL()</code> to open it</li>
+</ol>
+<p>The response should include the HTML file path. Opening it shows an
+interactive bar chart with tooltips and hover effects.</p>
+</div>
+<div id="test-8b-static-ggplot-fallback" class="section level2">
+<h2>Test 8b: Static ggplot fallback</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Use ggplot to create a bar chart of enrollment counts by role. Return
+the plot object.</p>
+</blockquote>
+<p><strong>Expected:</strong> Claude calls <code>execute_r</code> with
+ggplot code (no <code>ggsave()</code>). The server detects the ggplot
+object and saves it as PNG + HTML viewer. Response should include:</p>
+<ol style="list-style-type: decimal">
+<li>A text line like “Plot saved: Enrollments by Role (1 layer)”</li>
+<li>File paths for the PNG and HTML viewer in the output directory</li>
+</ol>
+<p>This tests the static chart fallback for when Chart.js is not
+suitable.</p>
+</div>
+<div id="test-9-get_data_summary-basic" class="section level2">
+<h2>Test 9: get_data_summary – basic</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Give me a quick summary of the Grade Results dataset.</p>
+</blockquote>
+<p><strong>Expected:</strong> Claude calls <code>get_data_summary</code>
+with dataset “Grade Results”. Returns row/column counts and per-column
+statistics. Footer suggests <code>execute_r</code> for custom
+analysis.</p>
+</div>
+<div id="test-10-get_data_summary-with-filter" class="section level2">
+<h2>Test 10: get_data_summary – with filter</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Summarize the User Enrollments dataset, but only for the “Student”
+role.</p>
+</blockquote>
+<p><strong>Expected:</strong> Claude calls <code>get_data_summary</code>
+with:</p>
+<ul>
+<li>dataset: “User Enrollments”</li>
+<li>filter_by: <code>{&quot;role_name&quot;: &quot;Student&quot;}</code></li>
+</ul>
+<p>Returns stats for the filtered subset only. Row count should be less
+than the full dataset.</p>
+</div>
+<div id="test-11-get_data_summary-with-group_by" class="section level2">
+<h2>Test 11: get_data_summary – with group_by</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Break down User Enrollments by role_name. How many of each role are
+there?</p>
+</blockquote>
+<p><strong>Expected:</strong> Claude calls <code>get_data_summary</code>
+with:</p>
+<ul>
+<li>dataset: “User Enrollments”</li>
+<li>group_by: <code>[&quot;role_name&quot;]</code></li>
+</ul>
+<p>Returns group counts sorted by frequency (Student, Instructor, etc.).
+May also show numeric column means per group.</p>
+</div>
+<div id="test-12-execute_r-join-and-analyze" class="section level2">
+<h2>Test 12: execute_r – join and analyze</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Join the Users and User Enrollments datasets. How many courses is
+each user enrolled in on average?</p>
+</blockquote>
+<p><strong>Expected:</strong> Claude calls <code>execute_r</code> with
+something like:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>users <span class="ot">&lt;-</span> <span class="fu">bs_get_dataset</span>(<span class="st">&quot;Users&quot;</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>enrollments <span class="ot">&lt;-</span> <span class="fu">bs_get_dataset</span>(<span class="st">&quot;User Enrollments&quot;</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>joined <span class="ot">&lt;-</span> <span class="fu">bs_join</span>(users, enrollments)</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>joined <span class="sc">%&gt;%</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>  <span class="fu">group_by</span>(user_id) <span class="sc">%&gt;%</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">n_courses =</span> <span class="fu">n_distinct</span>(org_unit_id)) <span class="sc">%&gt;%</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>    <span class="at">mean_courses =</span> <span class="fu">mean</span>(n_courses),</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>    <span class="at">median_courses =</span> <span class="fu">median</span>(n_courses)</span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>  )</span></code></pre></div>
+<p>Returns a small summary table.</p>
+</div>
+<div id="test-13-execute_r-error-handling" class="section level2">
+<h2>Test 13: execute_r – error handling</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Run this R code: <code>nonexistent_function(123)</code></p>
+</blockquote>
+<p><strong>Expected:</strong> Claude calls <code>execute_r</code>. The
+result should have <code>isError: true</code> with a message like “could
+not find function ‘nonexistent_function’”. Claude should explain the
+error gracefully.</p>
+</div>
+<div id="test-14-multi-step-analysis-integration-test" class="section level2">
+<h2>Test 14: Multi-step analysis (integration test)</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>I want a complete analysis of grade performance. First describe the
+Grade Results dataset so I understand the columns, then show me the
+distribution of final grades as a histogram, and finally give me the
+mean grade broken down by org_unit_id (show the top 10).</p>
+</blockquote>
+<p><strong>Expected:</strong> Claude makes 3+ tool calls in
+sequence:</p>
+<ol style="list-style-type: decimal">
+<li><code>describe_dataset</code> or <code>execute_r</code> to explore
+columns</li>
+<li><code>execute_r</code> with ggplot histogram – inline image
+appears</li>
+<li><code>execute_r</code> with grouped summary – text table of top
+10</li>
+</ol>
+<p>This tests the full workflow: discover, visualize, summarize.</p>
+</div>
+<div id="test-15-removed-tools-are-gone" class="section level2">
+<h2>Test 15: Removed tools are gone</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Use the get_dataset tool to download the Users table.</p>
+</blockquote>
+<p><strong>Expected:</strong> Claude should NOT have access to
+<code>get_dataset</code> (it was removed). Instead it should either:</p>
+<ul>
+<li>Use <code>execute_r</code> to load the data:
+<code>bs_get_dataset(&quot;Users&quot;) %&gt;% head(20)</code></li>
+<li>Or use <code>get_data_summary</code> for stats</li>
+<li>If it tries <code>get_dataset</code>, the server returns “Unknown
+tool” error</li>
+</ul>
+</div>
+<div id="test-16-list_schemas" class="section level2">
+<h2>Test 16: list_schemas</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>What schemas are registered and what are their key columns?</p>
+</blockquote>
+<p><strong>Expected:</strong> Claude calls <code>list_schemas</code>.
+Returns a list of schema names with their key columns (the foreign keys
+used by <code>bs_join()</code>).</p>
+</div>
+<div id="troubleshooting" class="section level2">
+<h2>Troubleshooting</h2>
+<p><strong>Server won’t start:</strong></p>
+<ul>
+<li>Check <code>claude_desktop_config.json</code> has the right path to
+<code>server.R</code></li>
+<li>Ensure <code>cwd</code> points to the directory with
+<code>config.yml</code></li>
+<li>Run <code>Rscript /path/to/server.R</code> manually to see stderr
+errors</li>
+</ul>
+<p><strong>Auth fails:</strong></p>
+<ul>
+<li>Open R interactively, run
+<code>library(brightspaceR); bs_auth()</code> to get a token</li>
+<li>The token is cached; the MCP server reuses it</li>
+</ul>
+<p><strong>Plots don’t render:</strong></p>
+<ul>
+<li>Ensure the <code>png()</code> graphics device is available (it
+should be on all standard R installs)</li>
+<li>Check stderr for errors from <code>grDevices::png()</code></li>
+</ul>
+<p><strong>Results are truncated:</strong></p>
+<ul>
+<li>This is intentional at ~800KB. Use <code>head()</code> or
+<code>filter()</code> in <code>execute_r</code> to narrow results</li>
+<li>The truncation message tells you this</li>
+</ul>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
