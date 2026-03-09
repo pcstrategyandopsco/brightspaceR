@@ -20,10 +20,12 @@ Aggregates engagement metrics from Learner Usage data by course, department,
 or user.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 usage <- bs_get_ads("Learner Usage")
 bs_engagement_summary(usage, by = "course")
 bs_engagement_summary(usage, by = "department")
 bs_engagement_summary(usage, by = "user")
+}
 }
 }

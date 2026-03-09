@@ -25,9 +25,11 @@ polls until complete, downloads the result, and returns a tidy tibble.
 Intended for interactive use.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 usage <- bs_get_ads("Learner Usage")
 usage <- bs_get_ads("Learner Usage",
   filters = bs_ads_filter(start_date = "2024-01-01"))
+}
 }
 }

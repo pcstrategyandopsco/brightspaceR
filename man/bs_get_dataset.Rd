@@ -20,8 +20,10 @@ Convenience wrapper that finds a dataset by name, downloads the latest
 full extract, and returns a tidy tibble.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 users <- bs_get_dataset("Users")
 grades <- bs_get_dataset("Grade Results")
+}
 }
 }

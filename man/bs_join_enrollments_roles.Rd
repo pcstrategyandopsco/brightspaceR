@@ -18,9 +18,11 @@ A joined tibble.
 Left joins an enrollments tibble with a role details tibble on \code{role_id}.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 enrollments <- bs_get_dataset("User Enrollments")
 roles <- bs_get_dataset("Role Details")
 bs_join_enrollments_roles(enrollments, roles)
+}
 }
 }

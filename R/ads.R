@@ -31,9 +31,11 @@ ads_status_text <- c(
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' ads <- bs_list_ads()
 #' ads
+#' }
 #' }
 bs_list_ads <- function() {
   path <- bs_ads_path("list")
@@ -162,9 +164,11 @@ format_iso8601 <- function(x) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' job <- bs_create_ads_job("Learner Usage")
 #' job$export_job_id
+#' }
 #' }
 bs_create_ads_job <- function(name, filters = list()) {
   # Look up dataset ID by name
@@ -225,9 +229,11 @@ bs_create_ads_job <- function(name, filters = list()) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' status <- bs_ads_job_status("abc-123")
 #' status$status_text
+#' }
 #' }
 bs_ads_job_status <- function(job_id) {
   path <- bs_ads_path("jobs", job_id)
@@ -253,8 +259,10 @@ bs_ads_job_status <- function(job_id) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' bs_list_ads_jobs()
+#' }
 #' }
 bs_list_ads_jobs <- function() {
   path <- bs_ads_path("jobs")
@@ -303,8 +311,10 @@ bs_list_ads_jobs <- function() {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' result <- bs_download_ads("abc-123", "Learner Usage")
+#' }
 #' }
 bs_download_ads <- function(job_id, dataset_name = NULL) {
   # Build the download URL
@@ -356,10 +366,12 @@ bs_download_ads <- function(job_id, dataset_name = NULL) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' usage <- bs_get_ads("Learner Usage")
 #' usage <- bs_get_ads("Learner Usage",
 #'   filters = bs_ads_filter(start_date = "2024-01-01"))
+#' }
 #' }
 bs_get_ads <- function(name, filters = list(), poll_interval = 5,
                        timeout = 300) {
@@ -425,8 +437,10 @@ bs_get_ads <- function(name, filters = list(), poll_interval = 5,
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' bs_org_id()
+#' }
 #' }
 bs_org_id <- function() {
   path <- paste("d2l/api/lp", bs_api_version(), "organization/info", sep = "/")

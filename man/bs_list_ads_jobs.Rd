@@ -15,7 +15,9 @@ A tibble of all submitted export jobs with columns:
 List all submitted ADS export jobs
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 bs_list_ads_jobs()
+}
 }
 }

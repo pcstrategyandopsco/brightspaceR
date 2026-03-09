@@ -19,7 +19,9 @@ Downloads the result of a completed ADS export job, unzips it,
 and returns a tidy tibble with proper types and snake_case names.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 result <- bs_download_ads("abc-123", "Learner Usage")
+}
 }
 }

@@ -19,9 +19,11 @@ Left joins an enrollments tibble with a grade results tibble on
 \code{org_unit_id} and \code{user_id}.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 enrollments <- bs_get_dataset("User Enrollments")
 grades <- bs_get_dataset("Grade Results")
 bs_join_enrollments_grades(enrollments, grades)
+}
 }
 }

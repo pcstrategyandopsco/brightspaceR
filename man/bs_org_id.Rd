@@ -14,7 +14,9 @@ Calls \verb{/d2l/api/lp/(version)/organization/info} and returns the org
 identifier.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 bs_org_id()
+}
 }
 }

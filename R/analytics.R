@@ -17,10 +17,12 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' users <- bs_get_dataset("Users")
 #' real_users <- bs_filter_test_users(users)
 #' real_users <- bs_filter_test_users(users, exclusion_list = c("testuser01"))
+#' }
 #' }
 bs_filter_test_users <- function(df, min_id_length = 30, exclusion_list = NULL,
                                  id_col = "org_defined_id") {
@@ -65,11 +67,13 @@ if (!is.null(exclusion_list)) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' enroll <- bs_get_dataset("Enrollments and Withdrawals")
 #' org_units <- bs_get_dataset("Org Units")
 #' users <- bs_get_dataset("Users")
 #' enriched <- bs_enrich_enrollments(enroll, org_units, users)
+#' }
 #' }
 bs_enrich_enrollments <- function(enrollments, org_units, users,
                                   course_type = "Course Offering") {
@@ -138,9 +142,11 @@ bs_enrich_enrollments <- function(enrollments, org_units, users,
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' enriched <- bs_enrich_enrollments(enroll, org_units, users)
 #' summary <- bs_summarize_enrollments(enriched)
+#' }
 #' }
 bs_summarize_enrollments <- function(enriched_enrollments,
                                      event_type = "Enroll") {
@@ -176,9 +182,11 @@ bs_summarize_enrollments <- function(enriched_enrollments,
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' usage <- bs_get_ads("Learner Usage")
 #' engagement <- bs_course_engagement(usage)
+#' }
 #' }
 bs_course_engagement <- function(learner_usage, tz = NULL) {
   tz <- tz %||% bs_get_timezone()
@@ -238,11 +246,13 @@ bs_course_engagement <- function(learner_usage, tz = NULL) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' usage <- bs_get_ads("Learner Usage")
 #' bs_engagement_summary(usage, by = "course")
 #' bs_engagement_summary(usage, by = "department")
 #' bs_engagement_summary(usage, by = "user")
+#' }
 #' }
 bs_engagement_summary <- function(learner_usage,
                                   by = c("course", "department", "user")) {
@@ -320,10 +330,12 @@ bs_engagement_summary <- function(learner_usage,
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' grades <- bs_get_dataset("Grade Results")
 #' objects <- bs_get_dataset("Grade Objects")
 #' bs_grade_summary(grades, objects)
+#' }
 #' }
 bs_grade_summary <- function(grade_results, grade_objects) {
   # Join grades with grade object definitions
@@ -363,9 +375,11 @@ bs_grade_summary <- function(grade_results, grade_objects) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' attempts <- bs_get_dataset("Quiz Attempts")
 #' bs_assessment_performance(attempts)
+#' }
 #' }
 bs_assessment_performance <- function(quiz_attempts) {
   result <- quiz_attempts
@@ -415,9 +429,11 @@ bs_assessment_performance <- function(quiz_attempts) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' submissions <- bs_get_dataset("Assignment Submissions")
 #' bs_assignment_completion(submissions)
+#' }
 #' }
 bs_assignment_completion <- function(assignment_submissions) {
   result <- assignment_submissions
@@ -459,10 +475,12 @@ bs_assignment_completion <- function(assignment_submissions) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' usage <- bs_get_ads("Learner Usage")
 #' at_risk <- bs_identify_at_risk(usage)
 #' at_risk <- bs_identify_at_risk(usage, thresholds = list(progress = 30))
+#' }
 #' }
 bs_identify_at_risk <- function(learner_usage, thresholds = list()) {
   defaults <- list(progress = 25, inactive_days = 14, login_min = 2)
@@ -532,9 +550,11 @@ bs_identify_at_risk <- function(learner_usage, thresholds = list()) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' usage <- bs_get_ads("Learner Usage")
 #' bs_retention_summary(usage, by = "course")
+#' }
 #' }
 bs_retention_summary <- function(learner_usage,
                                  by = c("course", "department")) {
@@ -590,10 +610,12 @@ bs_retention_summary <- function(learner_usage,
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' usage <- bs_get_ads("Learner Usage")
 #' scored <- bs_engagement_score(usage)
 #' scored <- bs_engagement_score(usage, weights = list(login_count = 2))
+#' }
 #' }
 bs_engagement_score <- function(df, weights = list()) {
   defaults <- list(
@@ -649,12 +671,14 @@ bs_engagement_score <- function(df, weights = list()) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' usage <- bs_get_ads("Learner Usage")
 #' bs_course_summary(usage)
 #'
 #' awards <- bs_get_ads("Awards Issued")
 #' bs_course_summary(usage, awards = awards)
+#' }
 #' }
 bs_course_summary <- function(learner_usage, awards = NULL) {
   engaged <- bs_course_engagement(learner_usage)

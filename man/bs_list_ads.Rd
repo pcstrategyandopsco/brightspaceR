@@ -14,8 +14,10 @@ A tibble with columns: \code{dataset_id}, \code{name}, \code{description},
 Retrieves all available ADS datasets from the Brightspace instance.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 ads <- bs_list_ads()
 ads
+}
 }
 }

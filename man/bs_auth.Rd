@@ -45,12 +45,14 @@ login). After that, cached credentials are used automatically — including
 in non-interactive scripts run via \code{Rscript}.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 bs_auth()
 bs_auth(
   client_id = "my-client-id",
   client_secret = "my-secret",
   instance_url = "https://myschool.brightspace.com"
 )
+}
 }
 }

@@ -24,9 +24,11 @@ Flags at-risk students from Learner Usage data based on configurable
 thresholds. Adds boolean risk flags and a composite risk score.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 usage <- bs_get_ads("Learner Usage")
 at_risk <- bs_identify_at_risk(usage)
 at_risk <- bs_identify_at_risk(usage, thresholds = list(progress = 30))
+}
 }
 }

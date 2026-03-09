@@ -34,7 +34,9 @@ Authenticates using an existing refresh token, without requiring browser
 interaction. Ideal for non-interactive scripts and scheduled jobs.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 bs_auth_refresh(refresh_token = "my-refresh-token")
+}
 }
 }

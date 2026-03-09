@@ -15,8 +15,10 @@ A tibble with columns: \code{schema_id}, \code{plugin_id}, \code{name},
 Retrieves all available BDS datasets from the Brightspace instance.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 datasets <- bs_list_datasets()
 datasets
+}
 }
 }

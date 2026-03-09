@@ -8,9 +8,11 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' datasets <- bs_list_datasets()
 #' datasets
+#' }
 #' }
 bs_list_datasets <- function() {
   path <- bs_bds_path()
@@ -54,9 +56,11 @@ bs_list_datasets <- function() {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' datasets <- bs_list_datasets()
 #' extracts <- bs_list_extracts(datasets$schema_id[1], datasets$plugin_id[1])
+#' }
 #' }
 bs_list_extracts <- function(schema_id, plugin_id) {
   path <- bs_bds_path(schema_id, "plugins", plugin_id, "extracts")
@@ -100,12 +104,14 @@ bs_list_extracts <- function(schema_id, plugin_id) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' datasets <- bs_list_datasets()
 #' users <- bs_download_dataset(
 #'   datasets$schema_id[1],
 #'   datasets$plugin_id[1]
 #' )
+#' }
 #' }
 bs_download_dataset <- function(schema_id, plugin_id,
                                 extract_type = c("full", "diff"),
@@ -210,10 +216,12 @@ bs_download_dataset <- function(schema_id, plugin_id,
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' all_data <- bs_download_all()
 #' all_data$users
 #' all_data$org_units
+#' }
 #' }
 bs_download_all <- function(extract_type = c("full", "diff")) {
   extract_type <- match.arg(extract_type)
@@ -276,9 +284,11 @@ bs_download_all <- function(extract_type = c("full", "diff")) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' users <- bs_get_dataset("Users")
 #' grades <- bs_get_dataset("Grade Results")
+#' }
 #' }
 bs_get_dataset <- function(name, extract_type = c("full", "diff")) {
   extract_type <- match.arg(extract_type)

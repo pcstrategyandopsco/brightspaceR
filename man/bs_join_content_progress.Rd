@@ -19,9 +19,11 @@ Left joins a content objects tibble with a content user progress tibble
 on \code{content_object_id} and \code{org_unit_id}.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 content <- bs_get_dataset("Content Objects")
 progress <- bs_get_dataset("Content User Progress")
 bs_join_content_progress(content, progress)
+}
 }
 }

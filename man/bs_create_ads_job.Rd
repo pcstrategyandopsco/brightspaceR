@@ -22,8 +22,10 @@ Submits a new export job for the named ADS dataset. Use
 \code{\link[=bs_download_ads]{bs_download_ads()}} to retrieve the result.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 job <- bs_create_ads_job("Learner Usage")
 job$export_job_id
+}
 }
 }

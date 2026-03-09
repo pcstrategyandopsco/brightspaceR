@@ -21,8 +21,10 @@ percentage, days since last visit, and passes through all raw activity counts.
 No composite score is computed here — use \code{\link[=bs_engagement_score]{bs_engagement_score()}} to add one.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 usage <- bs_get_ads("Learner Usage")
 engagement <- bs_course_engagement(usage)
+}
 }
 }

@@ -31,11 +31,13 @@ Downloads a specific dataset extract as a ZIP file, unzips it, reads the
 CSV, and returns a tidy tibble with proper types.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 datasets <- bs_list_datasets()
 users <- bs_download_dataset(
   datasets$schema_id[1],
   datasets$plugin_id[1]
 )
+}
 }
 }

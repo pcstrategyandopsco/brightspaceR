@@ -16,8 +16,10 @@ making lightweight test calls to each endpoint group. Useful for diagnosing
 403 errors.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 bs_auth()
 bs_check_scopes()
+}
 }
 }

@@ -19,8 +19,10 @@ Calculates retention metrics by course or department, including start rates,
 completion rates, and dropout rates.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 usage <- bs_get_ads("Learner Usage")
 bs_retention_summary(usage, by = "course")
+}
 }
 }

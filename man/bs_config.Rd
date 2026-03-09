@@ -27,12 +27,14 @@ the \pkg{config} package. The function looks for a \code{brightspace} key in the
 config file and returns the credentials as a named list.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 # Read from default config.yml
 cfg <- bs_config()
 cfg$client_id
 
 # Read from a custom file and profile
 cfg <- bs_config(file = "my-config.yml", profile = "production")
+}
 }
 }

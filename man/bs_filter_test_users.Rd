@@ -31,9 +31,11 @@ an optional exclusion list. This eliminates the repeated boilerplate of
 removing test users before analysis.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 users <- bs_get_dataset("Users")
 real_users <- bs_filter_test_users(users)
 real_users <- bs_filter_test_users(users, exclusion_list = c("testuser01"))
+}
 }
 }

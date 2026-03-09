@@ -17,8 +17,10 @@ A list with \code{export_job_id}, \code{name}, \code{status} (integer),
 Check ADS export job status
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 status <- bs_ads_job_status("abc-123")
 status$status_text
+}
 }
 }

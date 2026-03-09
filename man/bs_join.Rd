@@ -22,9 +22,11 @@ schema registry and performs a join. Falls back to joining on common column
 names if schemas are not available.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 users <- bs_get_dataset("Users")
 enrollments <- bs_get_dataset("User Enrollments")
 bs_join(users, enrollments)
+}
 }
 }

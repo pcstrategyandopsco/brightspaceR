@@ -23,11 +23,13 @@ progress (available from Learner Usage alone); \code{completion_rate_awards} use
 certificate issuance (more authoritative but requires Awards Issued dataset).
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 usage <- bs_get_ads("Learner Usage")
 bs_course_summary(usage)
 
 awards <- bs_get_ads("Awards Issued")
 bs_course_summary(usage, awards = awards)
+}
 }
 }

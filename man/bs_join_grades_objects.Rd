@@ -19,9 +19,11 @@ Left joins a grade results tibble with a grade objects tibble on
 \code{grade_object_id} and \code{org_unit_id}.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 grades <- bs_get_dataset("Grade Results")
 objects <- bs_get_dataset("Grade Objects")
 bs_join_grades_objects(grades, objects)
+}
 }
 }

@@ -18,8 +18,10 @@ Aggregates assignment submission data per assignment per org unit, including
 grading rates and score statistics.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 submissions <- bs_get_dataset("Assignment Submissions")
 bs_assignment_completion(submissions)
+}
 }
 }

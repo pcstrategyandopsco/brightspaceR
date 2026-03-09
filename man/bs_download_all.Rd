@@ -17,9 +17,11 @@ Downloads all available datasets and returns them as a named list of
 tibbles. Names are snake_case versions of the dataset names.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 all_data <- bs_download_all()
 all_data$users
 all_data$org_units
+}
 }
 }

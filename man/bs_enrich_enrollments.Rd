@@ -31,10 +31,12 @@ and users, adding analysis-friendly column aliases. Original column names are
 preserved for compatibility; friendly aliases are added for readability.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 enroll <- bs_get_dataset("Enrollments and Withdrawals")
 org_units <- bs_get_dataset("Org Units")
 users <- bs_get_dataset("Users")
 enriched <- bs_enrich_enrollments(enroll, org_units, users)
+}
 }
 }

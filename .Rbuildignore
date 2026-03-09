@@ -11,3 +11,5 @@
 ^for_review$
 ^Rplots\.pdf$
 ^.*\.rds$
+^CLAUDE\.md$
+^cran-comments\.md$

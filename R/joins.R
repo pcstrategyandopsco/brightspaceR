@@ -9,10 +9,12 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' users <- bs_get_dataset("Users")
 #' enrollments <- bs_get_dataset("User Enrollments")
 #' bs_join_users_enrollments(users, enrollments)
+#' }
 #' }
 bs_join_users_enrollments <- function(users, enrollments) {
   dplyr::left_join(users, enrollments, by = "user_id")
@@ -30,10 +32,12 @@ bs_join_users_enrollments <- function(users, enrollments) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' enrollments <- bs_get_dataset("User Enrollments")
 #' grades <- bs_get_dataset("Grade Results")
 #' bs_join_enrollments_grades(enrollments, grades)
+#' }
 #' }
 bs_join_enrollments_grades <- function(enrollments, grade_results) {
   dplyr::left_join(enrollments, grade_results,
@@ -52,10 +56,12 @@ bs_join_enrollments_grades <- function(enrollments, grade_results) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' grades <- bs_get_dataset("Grade Results")
 #' objects <- bs_get_dataset("Grade Objects")
 #' bs_join_grades_objects(grades, objects)
+#' }
 #' }
 bs_join_grades_objects <- function(grade_results, grade_objects) {
   dplyr::left_join(grade_results, grade_objects,
@@ -74,10 +80,12 @@ bs_join_grades_objects <- function(grade_results, grade_objects) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' content <- bs_get_dataset("Content Objects")
 #' progress <- bs_get_dataset("Content User Progress")
 #' bs_join_content_progress(content, progress)
+#' }
 #' }
 bs_join_content_progress <- function(content_objects, content_progress) {
   dplyr::left_join(content_objects, content_progress,
@@ -95,10 +103,12 @@ bs_join_content_progress <- function(content_objects, content_progress) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' enrollments <- bs_get_dataset("User Enrollments")
 #' roles <- bs_get_dataset("Role Details")
 #' bs_join_enrollments_roles(enrollments, roles)
+#' }
 #' }
 bs_join_enrollments_roles <- function(enrollments, role_details) {
   dplyr::left_join(enrollments, role_details, by = "role_id")
@@ -115,10 +125,12 @@ bs_join_enrollments_roles <- function(enrollments, role_details) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' enrollments <- bs_get_dataset("User Enrollments")
 #' org_units <- bs_get_dataset("Org Units")
 #' bs_join_enrollments_orgunits(enrollments, org_units)
+#' }
 #' }
 bs_join_enrollments_orgunits <- function(enrollments, org_units) {
   dplyr::left_join(enrollments, org_units, by = "org_unit_id")
@@ -138,10 +150,12 @@ bs_join_enrollments_orgunits <- function(enrollments, org_units) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' users <- bs_get_dataset("Users")
 #' enrollments <- bs_get_dataset("User Enrollments")
 #' bs_join(users, enrollments)
+#' }
 #' }
 bs_join <- function(df1, df2, type = c("left", "inner", "right", "full")) {
   type <- match.arg(type)

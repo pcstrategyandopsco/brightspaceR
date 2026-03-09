@@ -18,9 +18,11 @@ A joined tibble.
 Left joins a users tibble with an enrollments tibble on \code{user_id}.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 users <- bs_get_dataset("Users")
 enrollments <- bs_get_dataset("User Enrollments")
 bs_join_users_enrollments(users, enrollments)
+}
 }
 }

@@ -18,7 +18,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Peeyoosh Chandra \email{peeyoosh.chandra@example.com}
+\strong{Maintainer}: Peeyoosh Chandra \email{pc@strategyandops.co}
 
 }
 \keyword{internal}

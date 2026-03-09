@@ -26,13 +26,15 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' bs_auth()
 #' bs_auth(
 #'   client_id = "my-client-id",
 #'   client_secret = "my-secret",
 #'   instance_url = "https://myschool.brightspace.com"
 #' )
+#' }
 #' }
 bs_auth <- function(client_id = "",
                     client_secret = "",
@@ -266,8 +268,10 @@ bs_auth_token <- function(token, instance_url,
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' bs_auth_refresh(refresh_token = "my-refresh-token")
+#' }
 #' }
 bs_auth_refresh <- function(refresh_token,
                             client_id = Sys.getenv("BRIGHTSPACE_CLIENT_ID"),
@@ -346,8 +350,10 @@ bs_auth_refresh <- function(refresh_token,
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' bs_deauth()
+#' }
 #' }
 bs_deauth <- function(clear_cache = TRUE) {
   if (clear_cache && !is.null(.bs_env$client_id)) {
@@ -383,9 +389,11 @@ bs_has_token <- function() {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' bs_auth()
 #' bs_check_scopes()
+#' }
 #' }
 bs_check_scopes <- function() {
   if (!bs_has_token()) {

@@ -15,13 +15,15 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' # Read from default config.yml
 #' cfg <- bs_config()
 #' cfg$client_id
 #'
 #' # Read from a custom file and profile
 #' cfg <- bs_config(file = "my-config.yml", profile = "production")
+#' }
 #' }
 bs_config <- function(file = "config.yml",
                       profile = Sys.getenv("R_CONFIG_ACTIVE", "default")) {
@@ -60,12 +62,14 @@ bs_config <- function(file = "config.yml",
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
+#' if (bs_has_token()) {
 #' bs_config_set(
 #'   client_id = "my-client-id",
 #'   client_secret = "my-secret",
 #'   instance_url = "https://myschool.brightspace.com"
 #' )
+#' }
 #' }
 bs_config_set <- function(client_id,
                           client_secret,

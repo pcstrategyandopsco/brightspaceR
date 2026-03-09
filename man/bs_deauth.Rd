@@ -18,7 +18,9 @@ Removes cached credentials from the current session and optionally from
 disk.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 bs_deauth()
+}
 }
 }

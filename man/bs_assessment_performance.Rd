@@ -17,8 +17,10 @@ Aggregates quiz attempt data into per-user per-quiz performance summaries
 including best, average, and latest scores.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 attempts <- bs_get_dataset("Quiz Attempts")
 bs_assessment_performance(attempts)
+}
 }
 }

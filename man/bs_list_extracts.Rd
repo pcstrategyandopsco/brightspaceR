@@ -19,8 +19,10 @@ A tibble with columns: \code{extract_id}, \code{extract_type}, \code{bds_type},
 Retrieves available full and differential extracts for a specific dataset.
 }
 \examples{
-\dontrun{
+\donttest{
+if (bs_has_token()) {
 datasets <- bs_list_datasets()
 extracts <- bs_list_extracts(datasets$schema_id[1], datasets$plugin_id[1])
+}
 }
 }

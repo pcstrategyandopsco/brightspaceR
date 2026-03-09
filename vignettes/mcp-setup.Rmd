@@ -87,7 +87,7 @@ Use the full absolute path in the configuration below.
 
 ## Claude Desktop setup
 
-[Claude Desktop](https://claude.ai/download) uses a JSON configuration file
+[Claude Desktop](https://claude.com/download) uses a JSON configuration file
 to register MCP servers.
 
 ### Step 1: Find your config file
@@ -159,7 +159,7 @@ and restart Claude Desktop.
 
 ## Claude Code (CLI) setup
 
-[Claude Code](https://docs.anthropic.com/en/docs/claude-code) reads MCP
+[Claude Code](https://platform.claude.com/docs/en/docs/claude-code) reads MCP
 server configuration from `~/.claude.json` (global) or from project-level
 `.mcp.json` files.
 
