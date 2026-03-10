@@ -7,13 +7,14 @@
 bs_check_scopes()
 }
 \value{
-A tibble with columns \code{scope}, \code{endpoint}, \code{status} ("OK" or error
-message), printed as a summary table.
+A tibble with columns \code{tier}, \code{scope}, \code{endpoint}, \code{status}
+("OK" or error message), printed as a summary table.
 }
 \description{
 Verifies which API capabilities are available with the current token by
-making lightweight test calls to each endpoint group. Useful for diagnosing
-403 errors.
+making lightweight test calls to each endpoint group. Checks are grouped
+into \strong{Tier 1 (BDS)} and \strong{Tier 2 (ADS)} so you can see at a glance
+which tier is working. Useful for diagnosing 403 errors.
 }
 \examples{
 \donttest{

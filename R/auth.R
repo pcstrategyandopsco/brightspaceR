@@ -381,11 +381,12 @@ bs_has_token <- function() {
 #' Test Brightspace API scope access
 #'
 #' Verifies which API capabilities are available with the current token by
-#' making lightweight test calls to each endpoint group. Useful for diagnosing
-#' 403 errors.
+#' making lightweight test calls to each endpoint group. Checks are grouped
+#' into **Tier 1 (BDS)** and **Tier 2 (ADS)** so you can see at a glance
+#' which tier is working. Useful for diagnosing 403 errors.
 #'
-#' @return A tibble with columns `scope`, `endpoint`, `status` ("OK" or error
-#'   message), printed as a summary table.
+#' @return A tibble with columns `tier`, `scope`, `endpoint`, `status`
+#'   ("OK" or error message), printed as a summary table.
 #' @export
 #'
 #' @examples
@@ -407,24 +408,28 @@ bs_check_scopes <- function() {
 
   checks <- list(
     list(
+      tier = "Tier 1 (BDS)",
       scope = "datasets:bds:read",
       label = "BDS dataset list",
       fn = function() bs_get(bs_bds_path())
     ),
     list(
+      tier = "Tier 1 (BDS)",
       scope = "datahub:dataexports:download,read",
       label = "BDS full/diff extracts",
       fn = function() bs_get(bs_bds_path())
     ),
     list(
-      scope = "reporting:dataset:list",
-      label = "ADS dataset list",
-      fn = function() bs_get(bs_ads_path("list"))
-    ),
-    list(
+      tier = "Tier 1 (BDS)",
       scope = "users:profile:read",
       label = "User profile (whoami)",
       fn = function() bs_get("d2l/api/lp/1.49/users/whoami")
+    ),
+    list(
+      tier = "Tier 2 (ADS)",
+      scope = "reporting:dataset:list",
+      label = "ADS dataset list",
+      fn = function() bs_get(bs_ads_path("list"))
     )
   )
 
@@ -446,6 +451,7 @@ bs_check_scopes <- function() {
       }
     )
     tibble::tibble(
+      tier = chk$tier,
       scope = chk$scope,
       endpoint = chk$label,
       status = status
@@ -454,16 +460,33 @@ bs_check_scopes <- function() {
 
   result <- dplyr::bind_rows(results)
 
-  n_ok <- sum(result$status == "OK")
-  n_fail <- nrow(result) - n_ok
+  # Report BDS (Tier 1) results
+  bds <- result[result$tier == "Tier 1 (BDS)", ]
+  bds_ok <- sum(bds$status == "OK")
+  bds_fail <- nrow(bds) - bds_ok
 
-  if (n_fail == 0) {
-    cli_alert_success("All {n_ok} scope checks passed.")
+  if (bds_fail == 0) {
+    cli_alert_success("Tier 1 (BDS): all {bds_ok} checks passed.")
   } else {
-    cli_alert_warning("{n_ok}/{nrow(result)} passed, {n_fail} failed:")
-    failed <- result[result$status != "OK", ]
+    cli_alert_warning("Tier 1 (BDS): {bds_ok}/{nrow(bds)} passed, {bds_fail} failed:")
+    failed <- bds[bds$status != "OK", ]
     for (i in seq_len(nrow(failed))) {
       cli_alert_danger("{failed$endpoint[i]}: {failed$status[i]} (scope: {.val {failed$scope[i]}})")
+    }
+  }
+
+  # Report ADS (Tier 2) results
+  ads <- result[result$tier == "Tier 2 (ADS)", ]
+  ads_ok <- sum(ads$status == "OK")
+  ads_fail <- nrow(ads) - ads_ok
+
+  if (ads_fail == 0) {
+    cli_alert_success("Tier 2 (ADS): all {ads_ok} checks passed.")
+  } else {
+    cli_alert_info("Tier 2 (ADS): not available (BDS functions still work fine).")
+    failed <- ads[ads$status != "OK", ]
+    for (i in seq_len(nrow(failed))) {
+      cli_alert_info("  {failed$endpoint[i]}: {failed$status[i]} (scope: {.val {failed$scope[i]}})")
     }
   }
 

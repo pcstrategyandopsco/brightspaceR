@@ -9,7 +9,10 @@ bs_config_set(
   client_secret,
   instance_url,
   redirect_uri = "https://localhost:1410/",
-  scope = "datahub:dataexports:*",
+  scope = paste("datasets:bds:read", "datahub:dataexports:read",
+    "datahub:dataexports:download", "reporting:dataset:list", "reporting:dataset:fetch",
+    "reporting:job:create", "reporting:job:list", "reporting:job:fetch",
+    "reporting:job:download", "users:profile:read"),
   file = "config.yml",
   profile = "default"
 )
@@ -24,7 +27,8 @@ bs_config_set(
 
 \item{redirect_uri}{Redirect URI. Defaults to \code{"https://localhost:1410/"}.}
 
-\item{scope}{OAuth2 scope. Defaults to \code{"datahub:dataexports:*"}.}
+\item{scope}{OAuth2 scope string (space-separated). Defaults to the full
+BDS + ADS scope set used by \code{\link[=bs_auth]{bs_auth()}}.}
 
 \item{file}{Path for the config file. Defaults to \code{"config.yml"}.}
 

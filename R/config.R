@@ -54,7 +54,8 @@ bs_config <- function(file = "config.yml",
 #' @param instance_url Your Brightspace instance URL (e.g.,
 #'   `"https://myschool.brightspace.com"`).
 #' @param redirect_uri Redirect URI. Defaults to `"https://localhost:1410/"`.
-#' @param scope OAuth2 scope. Defaults to `"datahub:dataexports:*"`.
+#' @param scope OAuth2 scope string (space-separated). Defaults to the full
+#'   BDS + ADS scope set used by [bs_auth()].
 #' @param file Path for the config file. Defaults to `"config.yml"`.
 #' @param profile Configuration profile to write to. Defaults to `"default"`.
 #'
@@ -75,7 +76,18 @@ bs_config_set <- function(client_id,
                           client_secret,
                           instance_url,
                           redirect_uri = "https://localhost:1410/",
-                          scope = "datahub:dataexports:*",
+                          scope = paste(
+                            "datasets:bds:read",
+                            "datahub:dataexports:read",
+                            "datahub:dataexports:download",
+                            "reporting:dataset:list",
+                            "reporting:dataset:fetch",
+                            "reporting:job:create",
+                            "reporting:job:list",
+                            "reporting:job:fetch",
+                            "reporting:job:download",
+                            "users:profile:read"
+                          ),
                           file = "config.yml",
                           profile = "default") {
   # Build the brightspace config
