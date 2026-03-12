@@ -55,3 +55,70 @@ test_that("bs_get_dataset errors when not authenticated", {
   brightspaceR:::bs_deauth()
   expect_error(bs_get_dataset("Users"), "No instance URL")
 })
+
+test_that("bs_get_dataset_current errors when not authenticated", {
+  withr::defer(brightspaceR:::bs_deauth())
+  brightspaceR:::bs_deauth()
+  expect_error(bs_get_dataset_current("Users"), "No instance URL")
+})
+
+# --- bs_apply_diffs tests ---
+
+test_that("bs_apply_diffs inserts new rows from diff", {
+  full <- tibble::tibble(user_id = 1:3, name = c("A", "B", "C"))
+  diff <- tibble::tibble(user_id = 4L, name = "D")
+  result <- bs_apply_diffs(full, list(diff))
+  expect_equal(nrow(result), 4)
+  expect_true(4L %in% result$user_id)
+})
+
+test_that("bs_apply_diffs updates existing rows", {
+  full <- tibble::tibble(user_id = 1:3, name = c("A", "B", "C"))
+  diff <- tibble::tibble(user_id = 2L, name = "B_updated")
+  result <- bs_apply_diffs(full, list(diff))
+  expect_equal(nrow(result), 3)
+  expect_equal(result$name[result$user_id == 2L], "B_updated")
+})
+
+test_that("bs_apply_diffs removes deleted rows when keep_deleted = FALSE", {
+  full <- tibble::tibble(
+    user_id = 1:3, name = c("A", "B", "C"),
+    is_deleted = c(FALSE, FALSE, FALSE)
+  )
+  diff <- tibble::tibble(user_id = 2L, name = "B", is_deleted = TRUE)
+  result <- bs_apply_diffs(full, list(diff), keep_deleted = FALSE)
+  expect_false(2L %in% result$user_id)
+  expect_equal(nrow(result), 2)
+})
+
+test_that("bs_apply_diffs keeps deleted rows when keep_deleted = TRUE", {
+  full <- tibble::tibble(
+    user_id = 1:3, name = c("A", "B", "C"),
+    is_deleted = c(FALSE, FALSE, FALSE)
+  )
+  diff <- tibble::tibble(user_id = 2L, name = "B", is_deleted = TRUE)
+  result <- bs_apply_diffs(full, list(diff), keep_deleted = TRUE)
+  expect_equal(nrow(result), 3)
+  expect_true(result$is_deleted[result$user_id == 2L])
+})
+
+test_that("bs_apply_diffs auto-detects _id columns when no dataset_name", {
+  full <- tibble::tibble(org_unit_id = 1:2, title = c("X", "Y"))
+  diff <- tibble::tibble(org_unit_id = 1L, title = "X_updated")
+  result <- bs_apply_diffs(full, list(diff))
+  expect_equal(result$title[result$org_unit_id == 1L], "X_updated")
+})
+
+test_that("bs_apply_diffs returns full unchanged with empty diffs", {
+  full <- tibble::tibble(user_id = 1:3, name = c("A", "B", "C"))
+  result <- bs_apply_diffs(full, list())
+  expect_identical(result, full)
+})
+
+test_that("bs_apply_diffs applies multiple diffs in order", {
+  full <- tibble::tibble(user_id = 1:2, name = c("A", "B"))
+  diff1 <- tibble::tibble(user_id = 1L, name = "A_v2")
+  diff2 <- tibble::tibble(user_id = 1L, name = "A_v3")
+  result <- bs_apply_diffs(full, list(diff1, diff2))
+  expect_equal(result$name[result$user_id == 1L], "A_v3")
+})

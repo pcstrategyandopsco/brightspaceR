@@ -334,3 +334,169 @@ bs_get_dataset <- function(name, extract_type = c("full", "diff")) {
     dataset_name = ds$name
   )
 }
+
+#' Merge full and differential BDS extracts
+#'
+#' Applies one or more differential extracts on top of a full extract using
+#' upsert logic keyed by the dataset's primary key columns.
+#'
+#' @param full A tibble from the full extract.
+#' @param diffs A list of tibbles from differential extracts, in chronological
+#'   order.
+#' @param dataset_name Optional dataset name used to look up key columns via
+#'   [bs_key_cols()].
+#' @param keep_deleted If `FALSE` (default), rows where `is_deleted` is `TRUE`
+#'   are removed from the final result.
+#'
+#' @return A tibble with diffs applied.
+#' @keywords internal
+#' @export
+bs_apply_diffs <- function(full, diffs, dataset_name = NULL, keep_deleted = FALSE) {
+  if (length(diffs) == 0) return(full)
+
+  # Determine key columns
+  key_cols <- NULL
+  if (!is.null(dataset_name)) {
+    key_cols <- bs_key_cols(dataset_name)
+  }
+  if (is.null(key_cols)) {
+    # Auto-detect: columns ending in _id
+    key_cols <- grep("_id$", names(full), value = TRUE)
+    key_cols <- setdiff(key_cols, "is_deleted")
+  }
+  if (length(key_cols) == 0) {
+    abort("Cannot determine key columns for merging. Provide `dataset_name`.")
+  }
+
+  result <- full
+  for (diff in diffs) {
+    # Only use key columns that exist in both datasets
+    common_keys <- intersect(key_cols, intersect(names(result), names(diff)))
+    if (length(common_keys) == 0) next
+    result <- dplyr::rows_upsert(result, diff, by = common_keys)
+  }
+
+  if (!keep_deleted && "is_deleted" %in% names(result)) {
+    result <- result[!result$is_deleted | is.na(result$is_deleted), ]
+  }
+
+  result
+}
+
+#' Get current dataset by merging full and differential extracts
+#'
+#' Downloads the latest full extract and all subsequent differential extracts
+#' for a dataset, then merges them to produce a current-as-of-today tibble.
+#'
+#' @param name Dataset name (case-insensitive partial match). For example,
+#'   `"Users"`, `"Grade Results"`, `"Org Units"`.
+#' @param keep_deleted If `FALSE` (default), rows marked as deleted in
+#'   differential extracts are removed from the final result.
+#'
+#' @return A tibble of the merged dataset contents.
+#' @export
+#'
+#' @examples
+#' \donttest{
+#' if (bs_has_token()) {
+#' users <- bs_get_dataset_current("Users")
+#' }
+#' }
+bs_get_dataset_current <- function(name, keep_deleted = FALSE) {
+  datasets <- bs_list_datasets()
+
+  # Name matching (same logic as bs_get_dataset)
+  idx <- which(tolower(datasets$name) == tolower(name))
+  if (length(idx) == 0) {
+    idx <- grep(name, datasets$name, ignore.case = TRUE)
+  }
+  if (length(idx) == 0) {
+    abort(c(
+      "Dataset {.val {name}} not found.",
+      i = "Use {.fun bs_list_datasets} to see available datasets."
+    ))
+  }
+  if (length(idx) > 1) {
+    matches <- datasets$name[idx]
+    cli_alert_warning(
+      "Multiple matches found: {.val {matches}}. Using the first match."
+    )
+    idx <- idx[1]
+  }
+
+  ds <- datasets[idx, ]
+
+  # 1. Download the latest full extract
+  cli_alert_info("Downloading latest full extract for {.val {ds$name}}...")
+  full <- bs_download_dataset(
+    schema_id = ds$schema_id,
+    plugin_id = ds$plugin_id,
+    extract_type = "full",
+    dataset_name = ds$name
+  )
+
+  # Get full extract metadata to find its created_date
+
+  full_extracts <- bs_list_extracts(ds$schema_id, ds$plugin_id)
+  full_extracts <- full_extracts[tolower(full_extracts$extract_type) == "full", ]
+  if (nrow(full_extracts) == 0) return(full)
+  full_created <- full_extracts$created_date[1]
+
+  # 2. Get differential extracts created after the full extract
+  if (is.na(ds$diff_plugin_id)) {
+    cli_alert_info("No differential plugin available. Returning full extract.")
+    return(full)
+  }
+
+  diff_extracts <- bs_list_extracts(ds$schema_id, ds$diff_plugin_id)
+  diff_extracts <- diff_extracts[
+    tolower(diff_extracts$extract_type) == "differential", ]
+
+  # Filter to diffs created after the full extract
+  diff_extracts <- diff_extracts[diff_extracts$created_date > full_created, ]
+
+  if (nrow(diff_extracts) == 0) {
+    cli_alert_info("No differential extracts newer than the full extract.")
+    return(full)
+  }
+
+  # Sort chronologically (oldest first)
+  diff_extracts <- diff_extracts[order(diff_extracts$created_date), ]
+
+  cli_alert_info(
+    "Downloading {nrow(diff_extracts)} differential extract{?s}..."
+  )
+
+  # 3. Download each diff
+  diffs <- list()
+  for (i in seq_len(nrow(diff_extracts))) {
+    d <- diff_extracts[i, ]
+    diff_data <- tryCatch(
+      bs_download_dataset(
+        schema_id = d$schema_id,
+        plugin_id = d$plugin_id,
+        extract_type = "diff",
+        dataset_name = ds$name
+      ),
+      error = function(e) {
+        cli_alert_warning(
+          "Failed to download diff extract {i}: {e$message}"
+        )
+        NULL
+      }
+    )
+    if (!is.null(diff_data)) {
+      diffs <- c(diffs, list(diff_data))
+    }
+  }
+
+  # 4. Merge
+  result <- bs_apply_diffs(full, diffs, dataset_name = ds$name,
+                           keep_deleted = keep_deleted)
+
+  cli_alert_success(
+    "Merged {.val {ds$name}}: {nrow(result)} rows x {ncol(result)} cols (full + {length(diffs)} diff{?s})"
+  )
+
+  result
+}
