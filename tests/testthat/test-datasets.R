@@ -115,6 +115,23 @@ test_that("bs_apply_diffs returns full unchanged with empty diffs", {
   expect_identical(result, full)
 })
 
+test_that("bs_apply_diffs handles type mismatches between full and diff", {
+  full <- tibble::tibble(
+    org_unit_id = 1:2,
+    start_date = as.POSIXct(c("2025-01-01", "2025-06-01"), tz = "UTC"),
+    is_active = c(TRUE, FALSE)
+  )
+  diff <- tibble::tibble(
+    org_unit_id = 1L,
+    start_date = "2025-03-01T00:00:00.000Z",
+    is_active = "True"
+  )
+  result <- bs_apply_diffs(full, list(diff))
+  expect_s3_class(result$start_date, "POSIXct")
+  expect_type(result$is_active, "logical")
+  expect_equal(nrow(result), 2)
+})
+
 test_that("bs_apply_diffs applies multiple diffs in order", {
   full <- tibble::tibble(user_id = 1:2, name = c("A", "B"))
   diff1 <- tibble::tibble(user_id = 1L, name = "A_v2")

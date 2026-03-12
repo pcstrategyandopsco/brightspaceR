@@ -164,3 +164,45 @@ normalize_dataset_name <- function(name) {
   name <- gsub("\\s+", "_", name)
   tolower(name)
 }
+
+#' Coerce columns in y to match types in x
+#'
+#' For each shared column, if types differ, attempts to cast the column in `y`
+#' to match `x`. This prevents `rows_upsert()` failures when diff extracts
+#' have character columns that should be datetime, logical, etc.
+#'
+#' @param y The tibble to coerce (diff extract).
+#' @param x The reference tibble (full extract).
+#'
+#' @return `y` with column types aligned to `x`.
+#' @keywords internal
+align_col_types <- function(y, x) {
+  shared <- intersect(names(y), names(x))
+  for (col in shared) {
+    if (identical(class(y[[col]]), class(x[[col]]))) next
+    target_class <- class(x[[col]])[[1]]
+    source_class <- class(y[[col]])[[1]]
+    cli_alert_warning(
+      "Column {.field {col}}: coercing {.cls {source_class}} to {.cls {target_class}} to match full extract."
+    )
+    tryCatch({
+      if (target_class == "POSIXct") {
+        y[[col]] <- readr::parse_datetime(as.character(y[[col]]))
+      } else if (target_class == "Date") {
+        y[[col]] <- as.Date(y[[col]])
+      } else if (target_class == "logical") {
+        y[[col]] <- bs_parse_bool(as.character(y[[col]]))
+      } else if (target_class == "integer") {
+        y[[col]] <- as.integer(y[[col]])
+      } else if (target_class == "numeric" || target_class == "double") {
+        y[[col]] <- as.double(y[[col]])
+      } else if (target_class == "character") {
+        y[[col]] <- as.character(y[[col]])
+      }
+    }, error = function(e) {
+      warn(paste0("Could not coerce column '", col, "' to ", target_class,
+                  ": ", e$message))
+    })
+  }
+  y
+}

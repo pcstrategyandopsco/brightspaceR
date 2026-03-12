@@ -373,6 +373,10 @@ bs_apply_diffs <- function(full, diffs, dataset_name = NULL, keep_deleted = FALS
     # Only use key columns that exist in both datasets
     common_keys <- intersect(key_cols, intersect(names(result), names(diff)))
     if (length(common_keys) == 0) next
+    # Align diff column types to match full (e.g., character -> datetime)
+    diff <- align_col_types(diff, result)
+    # Deduplicate: keep last occurrence per key (most recent update wins)
+    diff <- diff[!duplicated(diff[common_keys], fromLast = TRUE), ]
     result <- dplyr::rows_upsert(result, diff, by = common_keys)
   }
 
