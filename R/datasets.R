@@ -397,13 +397,17 @@ bs_apply_diffs <- function(full, diffs, dataset_name = NULL, keep_deleted = FALS
 #' @param keep_deleted If `FALSE` (default), rows marked as deleted in
 #'   differential extracts are removed from the final result.
 #'
-#' @return A tibble of the merged dataset contents.
+#' @return A tibble of the merged dataset contents. The tibble carries a
+#'   `"bds_manifest"` attribute with the extract breakdown (full, each diff,
+#'   and merged total with row counts and download status). Retrieve it with
+#'   [bs_diff_manifest()].
 #' @export
 #'
 #' @examples
 #' \donttest{
 #' if (bs_has_token()) {
 #' users <- bs_get_dataset_current("Users")
+#' bs_diff_manifest(users)
 #' }
 #' }
 bs_get_dataset_current <- function(name, keep_deleted = FALSE) {
@@ -471,17 +475,35 @@ bs_get_dataset_current <- function(name, keep_deleted = FALSE) {
     "Downloading {nrow(diff_extracts)} differential extract{?s}..."
   )
 
-  # 3. Download each diff
+  # 3. Download each diff using its specific download_link
+  #    (bs_download_dataset without extract_id always resolves to the latest
+  #     extract, so we must use the per-extract download_link directly)
   diffs <- list()
+  manifest <- tibble::tibble(
+    extract = "Full",
+    created_date = full_created,
+    rows = nrow(full),
+    status = "ok"
+  )
+
   for (i in seq_len(nrow(diff_extracts))) {
     d <- diff_extracts[i, ]
-    diff_data <- tryCatch(
-      bs_download_dataset(
-        schema_id = d$schema_id,
-        plugin_id = d$plugin_id,
-        extract_type = "diff",
-        dataset_name = ds$name
-      ),
+    diff_data <- tryCatch({
+      zip_path <- tempfile(fileext = ".zip")
+      bs_download(d$download_link, zip_path, download_size = d$download_size)
+      tmp_dir <- bs_unzip(zip_path)
+      csv_files <- list.files(tmp_dir, pattern = "\\.csv$",
+                              full.names = TRUE, recursive = TRUE)
+      if (length(csv_files) == 0) {
+        cli_alert_warning("Diff extract {i} contained no CSV files.")
+        NULL
+      } else {
+        result_df <- bs_parse_csv(csv_files[[1]], dataset_name = ds$name)
+        unlink(zip_path)
+        unlink(tmp_dir, recursive = TRUE)
+        result_df
+      }
+    },
       error = function(e) {
         cli_alert_warning(
           "Failed to download diff extract {i}: {e$message}"
@@ -489,8 +511,22 @@ bs_get_dataset_current <- function(name, keep_deleted = FALSE) {
         NULL
       }
     )
+
     if (!is.null(diff_data)) {
       diffs <- c(diffs, list(diff_data))
+      manifest <- tibble::add_row(manifest,
+        extract = paste0("Diff ", i),
+        created_date = d$created_date,
+        rows = nrow(diff_data),
+        status = "ok"
+      )
+    } else {
+      manifest <- tibble::add_row(manifest,
+        extract = paste0("Diff ", i),
+        created_date = d$created_date,
+        rows = NA_integer_,
+        status = "failed"
+      )
     }
   }
 
@@ -498,9 +534,47 @@ bs_get_dataset_current <- function(name, keep_deleted = FALSE) {
   result <- bs_apply_diffs(full, diffs, dataset_name = ds$name,
                            keep_deleted = keep_deleted)
 
+  attr(result, "bds_manifest") <- manifest
+
   cli_alert_success(
     "Merged {.val {ds$name}}: {nrow(result)} rows x {ncol(result)} cols (full + {length(diffs)} diff{?s})"
   )
+  diff_rows <- sum(manifest$rows[manifest$extract != "Full" &
+                                   manifest$extract != "Merged"],
+                   na.rm = TRUE)
+  cli_alert_info(
+    "Use {.fun bs_diff_manifest} to inspect the extract breakdown ({nrow(full)} full + {diff_rows} diff rows)."
+  )
 
   result
+}
+
+#' Inspect the extract manifest from a merged BDS dataset
+#'
+#' Returns a tibble showing each extract (full + diffs + merged total) with
+#' its creation date, row count, and download status. Use this to verify
+#' that all differential extracts were successfully downloaded and merged.
+#'
+#' @param data A tibble returned by [bs_get_dataset_current()].
+#'
+#' @return A tibble with columns `extract`, `created_date`, `rows`, `status`,
+#'   or `NULL` if the data has no manifest attribute.
+#' @export
+#'
+#' @examples
+#' \donttest{
+#' if (bs_has_token()) {
+#' users <- bs_get_dataset_current("Users")
+#' bs_diff_manifest(users)
+#' }
+#' }
+bs_diff_manifest <- function(data) {
+  manifest <- attr(data, "bds_manifest")
+  if (is.null(manifest)) {
+    cli_alert_warning(
+      "No manifest found. Was this created by {.fun bs_get_dataset_current}?"
+    )
+    return(invisible(NULL))
+  }
+  manifest
 }

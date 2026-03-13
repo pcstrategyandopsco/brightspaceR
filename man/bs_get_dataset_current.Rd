@@ -14,7 +14,10 @@ bs_get_dataset_current(name, keep_deleted = FALSE)
 differential extracts are removed from the final result.}
 }
 \value{
-A tibble of the merged dataset contents.
+A tibble of the merged dataset contents. The tibble carries a
+\code{"bds_manifest"} attribute with the extract breakdown (full, each diff,
+and merged total with row counts and download status). Retrieve it with
+\code{\link[=bs_diff_manifest]{bs_diff_manifest()}}.
 }
 \description{
 Downloads the latest full extract and all subsequent differential extracts
@@ -24,6 +27,7 @@ for a dataset, then merges them to produce a current-as-of-today tibble.
 \donttest{
 if (bs_has_token()) {
 users <- bs_get_dataset_current("Users")
+bs_diff_manifest(users)
 }
 }
 }
