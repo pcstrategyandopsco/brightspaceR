@@ -30,9 +30,11 @@ The input tibble with an `engagement_score` column appended.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 usage <- bs_get_ads("Learner Usage")
 scored <- bs_engagement_score(usage)
 scored <- bs_engagement_score(usage, weights = list(login_count = 2))
-} # }
+}
+# }
 ```

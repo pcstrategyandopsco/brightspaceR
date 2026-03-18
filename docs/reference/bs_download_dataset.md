@@ -44,11 +44,13 @@ A tibble of the dataset contents.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 datasets <- bs_list_datasets()
 users <- bs_download_dataset(
   datasets$schema_id[1],
   datasets$plugin_id[1]
 )
-} # }
+}
+# }
 ```

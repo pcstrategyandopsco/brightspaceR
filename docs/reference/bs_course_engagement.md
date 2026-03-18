@@ -31,8 +31,10 @@ A tibble with all learner_usage identity columns plus computed metrics:
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 usage <- bs_get_ads("Learner Usage")
 engagement <- bs_course_engagement(usage)
-} # }
+}
+# }
 ```

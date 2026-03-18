@@ -22,8 +22,10 @@ A summarised tibble with one row per user per quiz per org unit.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 attempts <- bs_get_dataset("Quiz Attempts")
 bs_assessment_performance(attempts)
-} # }
+}
+# }
 ```

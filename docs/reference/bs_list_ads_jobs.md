@@ -16,7 +16,9 @@ A tibble of all submitted export jobs with columns: `export_job_id`,
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 bs_list_ads_jobs()
-} # }
+}
+# }
 ```

@@ -22,7 +22,9 @@ Invisibly returns `TRUE`.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 bs_deauth()
-} # }
+}
+# }
 ```

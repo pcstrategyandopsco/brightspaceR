@@ -16,7 +16,9 @@ Character string of the root org unit ID.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 bs_org_id()
-} # }
+}
+# }
 ```

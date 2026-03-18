@@ -120,10 +120,11 @@ self-contained HTML files:</p>
 distributions)</li>
 <li>Claude builds an HTML string with Chart.js loaded from CDN</li>
 <li>
-<code><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines()</a></code> saves it to the output directory</li>
+<code>write_chart(html, 'name.html')</code> saves it safely to the
+output directory</li>
 <li>The user opens the HTML file in their browser</li>
 </ol>
-<pre><code>execute_r → aggregate data → paste0(Chart.js HTML) → writeLines()
+<pre><code>execute_r → aggregate data → paste0(Chart.js HTML) → write_chart()
     ↓
 Interactive chart in browser (tooltips, hover, responsive)</code></pre>
 <p>As a fallback for cases where the user explicitly requests a PNG or a
@@ -232,9 +233,16 @@ environment, so variables persist between calls:</p>
 <span></span>
 <span><span class="co"># Call 2: uses `users` from previous call</span></span>
 <span><span class="va">users</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">org_unit_id</span>, sort <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p>The workspace also exposes <code>output_dir</code> – the path to the
-configured output directory – so Chart.js HTML files can be written
-there directly.</p>
+<p>The workspace also exposes:</p>
+<ul>
+<li>
+<code>output_dir</code> – the path to the configured output
+directory</li>
+<li>
+<code>write_chart(html, filename)</code> – safe writer that only
+accepts <code>.html</code> files and only writes to the output directory
+(bare filenames only, no path traversal)</li>
+</ul>
 </div>
 <div class="section level3">
 <h3 id="output-directory">Output directory<a class="anchor" aria-label="anchor" href="#output-directory"></a>
@@ -362,7 +370,77 @@ count, a mean, a chart file path) rather than raw data.</p>
 <h3 id="defensive-execution">Defensive execution<a class="anchor" aria-label="anchor" href="#defensive-execution"></a>
 </h3>
 <p><code>execute_r</code> includes several layers of protection against
-runaway queries:</p>
+runaway queries and unsafe code:</p>
+<p><strong>AST code inspection</strong>: Before any code executes,
+<code>check_code_safety()</code> parses it into an abstract syntax tree
+and walks every node looking for blocked constructs. Blocked
+categories:</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Category</th>
+<th>Examples</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><strong>Direct package access</strong></td>
+<td>
+<code>brightspaceR::</code>, <code>httr::</code>,
+<code>httr2::</code>, <code>curl::</code>, <code>jsonlite::</code>,
+<code>config::</code>
+</td>
+</tr>
+<tr class="even">
+<td><strong>Metaprogramming</strong></td>
+<td>
+<code>eval</code>, <code>evalq</code>, <code>do.call</code>,
+<code>get</code>, <code>mget</code>, <code>match.fun</code>
+</td>
+</tr>
+<tr class="odd">
+<td><strong>Environment access</strong></td>
+<td>
+<code>Sys.getenv</code>, <code>Sys.setenv</code>
+</td>
+</tr>
+<tr class="even">
+<td><strong>Shell commands</strong></td>
+<td>
+<code>system</code>, <code>system2</code>, <code>shell</code>
+</td>
+</tr>
+<tr class="odd">
+<td><strong>File I/O</strong></td>
+<td>
+<code>readLines</code>, <code>writeLines</code>,
+<code>readRDS</code>, <code>saveRDS</code>, <code>write.csv</code>,
+<code>scan</code>, <code>file</code>
+</td>
+</tr>
+<tr class="even">
+<td><strong>Network</strong></td>
+<td>
+<code>download.file</code>, <code>url</code>,
+<code>socketConnection</code>
+</td>
+</tr>
+</tbody>
+</table>
+<p>If any blocked construct is detected, the code is rejected with an
+error listing the specific violations. Syntax errors pass through the
+safety check (they’ll fail at eval anyway). Comments and string literals
+containing blocked names are not flagged – only actual function calls in
+the AST are checked.</p>
+<p>The <code>write_chart(html, filename)</code> function in the
+workspace provides a safe alternative to <code><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines()</a></code> for
+Chart.js output. It only accepts <code>.html</code> filenames and only
+writes to the output directory.</p>
+<p><strong>PII field policy</strong>: Datasets are filtered through a
+YAML-driven column allowlist before they enter the cache (and thus
+before any code can access them). See the <a href="#pii-field-policy">PII Field Policy</a> section below.</p>
 <p><strong>30-second timeout</strong>: Every eval is wrapped in
 <code>setTimeLimit(elapsed = 30)</code>. If a Cartesian join or
 unfiltered aggregation over millions of rows hangs, the server kills it
@@ -382,10 +460,17 @@ to <code><a href="../reference/bs_join.html">bs_join()</a></code> when either in
 <p><strong>Server instructions</strong>: The <code>initialize</code>
 response tells Claude to always call <code>describe_dataset</code> first
 to check row counts, filter early on large tables, and never return raw
-unfiltered data frames.</p>
-<p>These defenses are layered: instructions guide Claude to do the right
-thing, row-count messages let it self-correct mid-execution, and the
-timeout is the hard backstop.</p>
+unfiltered data frames. It also documents the safety policy so Claude
+knows which functions are blocked and uses <code>write_chart()</code>
+instead of <code><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines()</a></code>.</p>
+<p><strong>Audit logging</strong>: Every tool call is logged to
+<code>mcp_audit.jsonl</code>. See the <a href="#audit-logging">Audit
+Logging</a> section below.</p>
+<p>These defenses are layered: the AST inspector blocks dangerous code,
+the field policy strips PII, instructions guide Claude to do the right
+thing, row-count messages let it self-correct mid-execution, the timeout
+is the hard backstop, and the audit log records everything for
+review.</p>
 </div>
 </div>
 <div class="section level2">
@@ -536,7 +621,7 @@ Claude thinks: I need to find the course, get grade data, and summarize it.
      count(bracket)
 
    html &lt;- paste0('&lt;!DOCTYPE html&gt;...&lt;script src=\"https://cdn.jsdelivr.net/npm/chart.js\"&gt;&lt;/script&gt;...')
-   writeLines(html, file.path(output_dir, 'stat101_grades.html'))
+   write_chart(html, 'stat101_grades.html')
    browseURL(file.path(output_dir, 'stat101_grades.html'))
    """)
    -&gt; Opens interactive bar chart in browser</code></pre>
@@ -546,13 +631,353 @@ Claude computes with R, then builds Chart.js HTML for interactive
 rendering.</p>
 </div>
 <div class="section level2">
+<h2 id="pii-field-policy">PII Field Policy<a class="anchor" aria-label="anchor" href="#pii-field-policy"></a>
+</h2>
+<p>Raw BDS datasets contain personally identifiable information – names,
+emails, free-text comments – that shouldn’t flow to an AI model. The
+server applies a YAML-driven column policy to every dataset before it
+enters the cache.</p>
+<div class="section level3">
+<h3 id="policy-file">Policy file<a class="anchor" aria-label="anchor" href="#policy-file"></a>
+</h3>
+<p>The default policy lives at <code>inst/mcp/field_policy.yml</code>.
+Each dataset entry specifies a mode:</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Mode</th>
+<th>Behaviour</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>allow</code></td>
+<td>Only listed columns pass through; everything else is dropped</td>
+</tr>
+<tr class="even">
+<td><code>redact</code></td>
+<td>Listed columns have their values replaced with
+<code>[REDACTED]</code>
+</td>
+</tr>
+<tr class="odd">
+<td><code>all</code></td>
+<td>All columns pass through unchanged</td>
+</tr>
+</tbody>
+</table>
+<p>Datasets not listed in the policy pass through with a warning to
+stderr.</p>
+</div>
+<div class="section level3">
+<h3 id="default-policy">Default policy<a class="anchor" aria-label="anchor" href="#default-policy"></a>
+</h3>
+<p>Datasets with PII use <code>allow</code> mode to expose only safe
+columns:</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Dataset</th>
+<th>Hidden columns</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><strong>Users</strong></td>
+<td>UserName, FirstName, MiddleName, LastName, ExternalEmail,
+OrgDefinedId</td>
+</tr>
+<tr class="even">
+<td><strong>Grade Results</strong></td>
+<td>Comments, PrivateComments</td>
+</tr>
+<tr class="odd">
+<td><strong>Assignment Submissions</strong></td>
+<td>Feedback, FeedbackUserId</td>
+</tr>
+<tr class="even">
+<td><strong>Quiz User Answers</strong></td>
+<td>Comment, LastModifiedBy</td>
+</tr>
+</tbody>
+</table>
+<p>All other datasets (Org Units, Role Details, Content Objects, etc.)
+use <code>all</code> mode since they contain no direct PII.</p>
+</div>
+<div class="section level3">
+<h3 id="custom-policy">Custom policy<a class="anchor" aria-label="anchor" href="#custom-policy"></a>
+</h3>
+<p>Override the default by setting the
+<code>BRIGHTSPACER_FIELD_POLICY</code> environment variable to the path
+of your custom YAML file:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>    <span class="dt">"BRIGHTSPACER_FIELD_POLICY"</span><span class="fu">:</span> <span class="st">"/path/to/custom_field_policy.yml"</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Resolution order: <code>BRIGHTSPACER_FIELD_POLICY</code> env var &gt;
+<code>field_policy.yml</code> in the working directory &gt; bundled
+<code>inst/mcp/field_policy.yml</code>.</p>
+</div>
+<div class="section level3">
+<h3 id="where-filtering-happens">Where filtering happens<a class="anchor" aria-label="anchor" href="#where-filtering-happens"></a>
+</h3>
+<p>The field policy is applied inside <code>get_cached_dataset()</code>,
+after fetching but before caching. The server delegates to
+<code><a href="../reference/bs_apply_field_policy.html">bs_apply_field_policy()</a></code> from the package (the same function
+available to regular R scripts via <code><a href="https://pcstrategyandopsco.github.io/brightspaceR/">library(brightspaceR)</a></code>).
+This means all downstream consumers – <code>describe_dataset</code>,
+<code>get_data_summary</code>, and <code>execute_r</code> via
+<code><a href="../reference/bs_get_dataset.html">bs_get_dataset()</a></code> – see only the filtered columns. There is
+no way for code running in the workspace to access columns removed by
+the policy.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="id-pseudonymisation">ID Pseudonymisation<a class="anchor" aria-label="anchor" href="#id-pseudonymisation"></a>
+</h2>
+<p>Even after the PII field policy strips names and emails,
+person-referencing ID columns (UserId, SubmitterId, LastModifiedBy,
+etc.) still contain raw integers that could be reversed to real people
+by anyone with Brightspace admin access. The pseudonymisation layer
+addresses this by HMAC-hashing all person IDs with a session-scoped
+key.</p>
+<div class="section level3">
+<h3 id="how-it-works">How it works<a class="anchor" aria-label="anchor" href="#how-it-works"></a>
+</h3>
+<p>At server startup, a 32-byte random key is generated via
+<code>openssl::rand_bytes(32)</code> and stored in a module-level
+variable. Each person ID value is hashed with HMAC-SHA256
+(<code><a href="https://jeroen.r-universe.dev/openssl/reference/hash.html" class="external-link">openssl::sha256()</a></code>), truncated to the first 8 hex
+characters, and prefixed with <code>usr_</code>. For example, UserId
+<code>12345</code> becomes <code>usr_a3f2b1c8</code>.</p>
+<ul>
+<li>
+<strong>Deterministic within a session</strong>: the same ID always
+maps to the same pseudonym, so joins, grouping, and cross-dataset
+references work normally.</li>
+<li>
+<strong>Unrecoverable across sessions</strong>: when the server
+restarts, a new key is generated and all pseudonyms change. There is no
+stored mapping to reverse.</li>
+<li>
+<strong>NA passthrough</strong>: <code>NA</code> values remain
+<code>NA</code>.</li>
+</ul>
+</div>
+<div class="section level3">
+<h3 id="which-columns-are-hashed">Which columns are hashed<a class="anchor" aria-label="anchor" href="#which-columns-are-hashed"></a>
+</h3>
+<p>A built-in registry (exported as <code>PERSON_ID_COLUMNS</code>
+internally, used by <code><a href="../reference/bs_pseudonymise_df.html">bs_pseudonymise_df()</a></code>) maps dataset
+names to their person-referencing ID columns. Only person IDs are hashed
+— structural IDs (OrgUnitId, GradeObjectId, ContentObjectId, etc.) are
+left untouched so the AI can still join and filter on them.</p>
+<table class="table">
+<thead><tr class="header">
+<th>Dataset</th>
+<th>Pseudonymised columns</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Users</td>
+<td>UserId</td>
+</tr>
+<tr class="even">
+<td>User Enrollments</td>
+<td>UserId</td>
+</tr>
+<tr class="odd">
+<td>Grade Results</td>
+<td>UserId, LastModifiedBy</td>
+</tr>
+<tr class="even">
+<td>Assignment Submissions</td>
+<td>SubmitterId, FeedbackUserId</td>
+</tr>
+<tr class="odd">
+<td>Quiz User Answers</td>
+<td>LastModifiedBy</td>
+</tr>
+<tr class="even">
+<td>Content User Progress</td>
+<td>UserId</td>
+</tr>
+<tr class="odd">
+<td>Quiz Attempts</td>
+<td>UserId</td>
+</tr>
+<tr class="even">
+<td>Discussion Posts</td>
+<td>UserId</td>
+</tr>
+<tr class="odd">
+<td>Discussion Topics</td>
+<td>LastPostUserId, DeletedByUserId</td>
+</tr>
+<tr class="even">
+<td>Content Objects</td>
+<td>CreatedBy, LastModifiedBy, DeletedBy</td>
+</tr>
+<tr class="odd">
+<td>Grade Objects</td>
+<td>DeletedByUserId</td>
+</tr>
+<tr class="even">
+<td>Enrollments and Withdrawals</td>
+<td>UserId, ModifiedByUserId</td>
+</tr>
+<tr class="odd">
+<td>Final Grades</td>
+<td>UserId</td>
+</tr>
+<tr class="even">
+<td>Attendance Records</td>
+<td>UserId</td>
+</tr>
+</tbody>
+</table>
+<p>Some of these columns may already be dropped by the field policy
+(e.g., FeedbackUserId in Assignment Submissions). The pseudonymisation
+function silently skips columns not present in the data frame.</p>
+</div>
+<div class="section level3">
+<h3 id="where-it-runs">Where it runs<a class="anchor" aria-label="anchor" href="#where-it-runs"></a>
+</h3>
+<p>Pseudonymisation runs inside <code>get_cached_dataset()</code>, after
+field policy filtering and before caching. The server calls
+<code><a href="../reference/bs_pseudonymise_df.html">bs_pseudonymise_df()</a></code> from the package (the same function
+available to regular R scripts) with the session-scoped key. This means
+all downstream consumers — <code>describe_dataset</code>,
+<code>get_data_summary</code>, and <code>execute_r</code> via
+<code><a href="../reference/bs_get_dataset.html">bs_get_dataset()</a></code> — see only pseudonymised IDs. The
+pseudonymisation is baked into the cache, so it is applied once per
+dataset per session.</p>
+</div>
+<div class="section level3">
+<h3 id="combined-effect-with-field-policy">Combined effect with field policy<a class="anchor" aria-label="anchor" href="#combined-effect-with-field-policy"></a>
+</h3>
+<p>Together, the PII field policy and ID pseudonymisation achieve full
+pseudonymisation:</p>
+<ol style="list-style-type: decimal">
+<li>
+<strong>Field policy</strong> drops direct identifiers: FirstName,
+LastName, Email, UserName, OrgDefinedId, free-text comments</li>
+<li>
+<strong>Pseudonymisation</strong> hashes indirect identifiers:
+UserId, SubmitterId, LastModifiedBy, etc.</li>
+</ol>
+<p>The AI model cannot see who a person is (no names/emails) or
+reverse-engineer their identity from an ID (hashed with a session-scoped
+key).</p>
+<p>For a detailed assessment of how these protections align with ENISA,
+NIST, ISO 25237, GDPR, FERPA, and HIPAA standards — and how to apply the
+same techniques in your own R scripts — see
+<code><a href="../articles/privacy-compliance.html">vignette("privacy-compliance")</a></code>.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="audit-logging">Audit Logging<a class="anchor" aria-label="anchor" href="#audit-logging"></a>
+</h2>
+<p>Every tool call is recorded in an append-only JSONL file at
+<code>{output_dir}/mcp_audit.jsonl</code>. Each line is a JSON object
+with:</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Field</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>timestamp</code></td>
+<td>ISO 8601 with milliseconds (UTC)</td>
+</tr>
+<tr class="even">
+<td><code>tool</code></td>
+<td>Tool name (e.g., <code>execute_r</code>,
+<code>describe_dataset</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>arguments</code></td>
+<td>Tool arguments (code truncated to 500 chars)</td>
+</tr>
+<tr class="even">
+<td><code>response_bytes</code></td>
+<td>Approximate response size in bytes</td>
+</tr>
+<tr class="odd">
+<td><code>code_blocked</code></td>
+<td>
+<code>true</code> if code was rejected by the AST inspector</td>
+</tr>
+<tr class="even">
+<td><code>blocked_constructs</code></td>
+<td>List of blocked functions/packages (if applicable)</td>
+</tr>
+<tr class="odd">
+<td><code>is_error</code></td>
+<td>
+<code>true</code> if the tool call resulted in an error</td>
+</tr>
+</tbody>
+</table>
+<p>Special entries:</p>
+<ul>
+<li>
+<code>session_start</code> – logged when the server starts (after
+authentication)</li>
+<li>
+<code>session_end</code> – logged when the server shuts down</li>
+</ul>
+<p>The audit log is machine-readable and can be reviewed directly or
+post-processed with standard JSON tools:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="co"># View all blocked code attempts</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="fu">cat</span> brightspaceR_output/mcp_audit.jsonl <span class="kw">|</span> <span class="ex">jq</span> <span class="st">'select(.code_blocked == true)'</span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co"># Count tool calls by type</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="fu">cat</span> brightspaceR_output/mcp_audit.jsonl <span class="kw">|</span> <span class="ex">jq</span> <span class="at">-r</span> <span class="st">'.tool'</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="kw">|</span> <span class="fu">uniq</span> <span class="at">-c</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="at">-rn</span></span></code></pre></div>
+</div>
+<div class="section level2">
 <h2 id="security-considerations">Security Considerations<a class="anchor" aria-label="anchor" href="#security-considerations"></a>
 </h2>
-<p><code>execute_r</code> evaluates arbitrary R code. This is
-intentional – the server runs locally, authenticated with the user’s own
-Brightspace credentials. The trust boundary is the same as opening an R
-console. The workspace is sandboxed only in the sense that it’s a child
-environment of <code><a href="https://rdrr.io/r/base/environment.html" class="external-link">globalenv()</a></code>, not a separate process.</p>
+<p>The MCP server is designed for single-user local deployment. The
+trust boundary is the same as opening an R console – the server runs
+locally, authenticated with the user’s own Brightspace credentials.</p>
+<p>Within that boundary, several layers protect against accidental data
+exposure and code misuse:</p>
+<ol style="list-style-type: decimal">
+<li>
+<strong>AST code inspection</strong> blocks dangerous functions (API
+access, shell commands, file I/O, metaprogramming) before code
+executes</li>
+<li>
+<strong>PII field policy</strong> strips sensitive columns (names,
+emails, comments) before data enters the workspace</li>
+<li>
+<strong>ID pseudonymisation</strong> HMAC-hashes all
+person-referencing ID columns with a session-scoped key, so the AI sees
+<code>usr_a3f2b1c8</code> instead of raw integers</li>
+<li>
+<strong>Audit logging</strong> records every tool call, blocked
+attempt, and error for post-hoc review</li>
+<li>
+<strong>Execution timeout</strong> (30 seconds) prevents runaway
+queries</li>
+<li>
+<strong>Size guard</strong> (~800KB) truncates oversized
+responses</li>
+<li>
+<strong>Row-count warnings</strong> help the model self-correct on
+large datasets</li>
+</ol>
 <p>For production deployments where multiple users share a server,
 <code>execute_r</code> would need process-level isolation (e.g., callr).
 That’s out of scope for the current single-user design.</p>

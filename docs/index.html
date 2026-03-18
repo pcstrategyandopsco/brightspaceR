@@ -16,8 +16,8 @@
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Access D2L Brightspace Data Sets via the BDS API">
-<meta name="description" content="Connect to the D2L Brightspace Data Sets (BDS) API via OAuth2, download all available datasets as tidy data frames with proper types, join them using convenience functions that know the foreign key relationships, and analyse student engagement, performance, and retention with composable analytics functions.">
-<meta property="og:description" content="Connect to the D2L Brightspace Data Sets (BDS) API via OAuth2, download all available datasets as tidy data frames with proper types, join them using convenience functions that know the foreign key relationships, and analyse student engagement, performance, and retention with composable analytics functions.">
+<meta name="description" content="Connect to the D2L Brightspace Data Sets (BDS) API via OAuth2, download all available datasets as tidy data frames with proper types, join them using convenience functions that know the foreign key relationships, and analyse student engagement, performance, and retention with ready-made analytics functions.">
+<meta property="og:description" content="Connect to the D2L Brightspace Data Sets (BDS) API via OAuth2, download all available datasets as tidy data frames with proper types, join them using convenience functions that know the foreign key relationships, and analyse student engagement, performance, and retention with ready-made analytics functions.">
 <meta property="og:image" content="https://pcstrategyandopsco.github.io/brightspaceR/logo.svg">
 </head>
 <body>
@@ -156,7 +156,7 @@
 <p><strong>You:</strong> How are students performing in STAT101?</p>
 <p>The assistant finds the Grade Results dataset, filters to STAT101, and returns summary statistics and an interactive grade distribution chart – all without you writing a line of code.</p>
 </blockquote>
-<p>The server exposes 7 tools: dataset discovery, column-level statistics, filtered/grouped summaries, and a full R execution environment with a persistent workspace. It runs locally, uses your existing OAuth2 credentials, and produces self-contained HTML charts you can share with colleagues.</p>
+<p>The server exposes 7 tools: dataset discovery, column-level statistics, filtered/grouped summaries, and a safety-checked R execution environment with a persistent workspace. It runs locally, uses your existing OAuth2 credentials, and produces self-contained HTML charts you can share with colleagues. Built-in security layers include AST code inspection (blocks shell commands, file I/O, direct API access), PII field policies (strips names, emails, and comments from datasets before they reach the model), and audit logging (JSONL record of every tool call).</p>
 <div class="section level3">
 <h3 id="setup">Setup<a class="anchor" aria-label="anchor" href="#setup"></a>
 </h3>
@@ -238,6 +238,7 @@
   </main><aside class="col-md-3"><div class="links">
 <h2 data-toc-skip>Links</h2>
 <ul class="list-unstyled">
+<li><a href="https://cloud.r-project.org/package=brightspaceR" class="external-link">View on CRAN</a></li>
 <li><a href="https://github.com/pcstrategyandopsco/brightspaceR/" class="external-link">Browse source code</a></li>
 <li><a href="https://github.com/pcstrategyandopsco/brightspaceR/issues" class="external-link">Report a bug</a></li>
 </ul>

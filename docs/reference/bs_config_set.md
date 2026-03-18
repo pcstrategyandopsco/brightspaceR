@@ -12,7 +12,10 @@ bs_config_set(
   client_secret,
   instance_url,
   redirect_uri = "https://localhost:1410/",
-  scope = "datahub:dataexports:*",
+  scope = paste("datasets:bds:read", "datahub:dataexports:read",
+    "datahub:dataexports:download", "reporting:dataset:list", "reporting:dataset:fetch",
+    "reporting:job:create", "reporting:job:list", "reporting:job:fetch",
+    "reporting:job:download", "users:profile:read"),
   file = "config.yml",
   profile = "default"
 )
@@ -39,7 +42,9 @@ bs_config_set(
 
 - scope:
 
-  OAuth2 scope. Defaults to `"datahub:dataexports:*"`.
+  OAuth2 scope string (space-separated). Defaults to the full BDS + ADS
+  scope set used by
+  [`bs_auth()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_auth.md).
 
 - file:
 
@@ -56,11 +61,13 @@ Invisibly returns the file path.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 bs_config_set(
   client_id = "my-client-id",
   client_secret = "my-secret",
   instance_url = "https://myschool.brightspace.com"
 )
-} # }
+}
+# }
 ```

@@ -47,7 +47,9 @@ Invisibly returns `TRUE` on success.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 bs_auth_refresh(refresh_token = "my-refresh-token")
-} # }
+}
+# }
 ```

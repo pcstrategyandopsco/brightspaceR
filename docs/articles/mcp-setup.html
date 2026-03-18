@@ -110,12 +110,12 @@ the MCP server. The server reuses the cached token at startup:</p>
 </li>
 <li>
 <p><strong>R packages</strong> – the server loads
-<code>jsonlite</code> and <code>stringr</code> directly, plus
-<code>dplyr</code>, <code>tidyr</code>, <code>ggplot2</code>,
-<code>lubridate</code>, and <code>scales</code> into the persistent
-workspace. Install any that are missing:</p>
+<code>jsonlite</code>, <code>stringr</code>, and <code>yaml</code>
+directly, plus <code>dplyr</code>, <code>tidyr</code>,
+<code>ggplot2</code>, <code>lubridate</code>, and <code>scales</code>
+into the persistent workspace. Install any that are missing:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"jsonlite"</span>, <span class="st">"stringr"</span>, <span class="st">"dplyr"</span>, <span class="st">"tidyr"</span>,</span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"jsonlite"</span>, <span class="st">"stringr"</span>, <span class="st">"yaml"</span>, <span class="st">"dplyr"</span>, <span class="st">"tidyr"</span>,</span>
 <span>                    <span class="st">"ggplot2"</span>, <span class="st">"lubridate"</span>, <span class="st">"scales"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </li>
 <li>
@@ -144,7 +144,7 @@ brightspaceR.</p>
 <div class="section level2">
 <h2 id="claude-desktop-setup">Claude Desktop setup<a class="anchor" aria-label="anchor" href="#claude-desktop-setup"></a>
 </h2>
-<p><a href="https://claude.ai/download" class="external-link">Claude Desktop</a> uses a JSON
+<p><a href="https://claude.com/download" class="external-link">Claude Desktop</a> uses a JSON
 configuration file to register MCP servers.</p>
 <div class="section level3">
 <h3 id="step-1-find-your-config-file">Step 1: Find your config file<a class="anchor" aria-label="anchor" href="#step-1-find-your-config-file"></a>
@@ -258,7 +258,7 @@ Desktop.</p>
 <div class="section level2">
 <h2 id="claude-code-cli-setup">Claude Code (CLI) setup<a class="anchor" aria-label="anchor" href="#claude-code-cli-setup"></a>
 </h2>
-<p><a href="https://docs.anthropic.com/en/docs/claude-code" class="external-link">Claude
+<p><a href="https://platform.claude.com/docs/en/docs/claude-code" class="external-link">Claude
 Code</a> reads MCP server configuration from <code>~/.claude.json</code>
 (global) or from project-level <code>.mcp.json</code> files.</p>
 <div class="section level3">
@@ -337,6 +337,12 @@ configuration:</p>
 </td>
 </tr>
 <tr class="odd">
+<td><code>BRIGHTSPACER_FIELD_POLICY</code></td>
+<td>Path to a custom PII field policy YAML file</td>
+<td>Bundled <code>inst/mcp/field_policy.yml</code>
+</td>
+</tr>
+<tr class="even">
 <td><code>R_CONFIG_ACTIVE</code></td>
 <td>Config profile to use from <code>config.yml</code> (e.g.,
 <code>"production"</code>)</td>
@@ -400,14 +406,21 @@ dataset</td>
 </tr>
 <tr class="odd">
 <td><code>execute_r</code></td>
-<td>Execute arbitrary R code in a persistent workspace with
-brightspaceR, dplyr, ggplot2, and more pre-loaded</td>
+<td>Execute R code in a persistent workspace with dplyr, ggplot2, and
+more pre-loaded. Code is safety-checked before execution; PII columns
+are filtered by policy.</td>
 </tr>
 </tbody>
 </table>
 <p>The <code>execute_r</code> tool is the most powerful – it lets the
-assistant write and run any R analysis, from simple filtering to complex
-multi-dataset joins and interactive Chart.js visualisations.</p>
+assistant write and run R analysis, from simple filtering to complex
+multi-dataset joins and interactive Chart.js visualisations. Code is
+inspected before execution to block dangerous constructs (shell
+commands, file I/O, direct API access), and datasets are filtered
+through a PII field policy that strips sensitive columns like names and
+emails before they reach the workspace.</p>
+<p>Use <code>write_chart(html, 'name.html')</code> to save Chart.js HTML
+output safely to the output directory.</p>
 </div>
 <div class="section level2">
 <h2 id="example-conversation">Example conversation<a class="anchor" aria-label="anchor" href="#example-conversation"></a>
@@ -436,6 +449,41 @@ a summary table.</p>
 <p>See <code><a href="../articles/mcp-server-design.html">vignette("mcp-server-design")</a></code> for architecture
 details, and <code><a href="../articles/mcp-test-script.html">vignette("mcp-test-script")</a></code> for a full set of
 test prompts to verify your setup.</p>
+</div>
+<div class="section level2">
+<h2 id="security">Security<a class="anchor" aria-label="anchor" href="#security"></a>
+</h2>
+<p>The MCP server includes four security layers enabled by default:</p>
+<p><strong>AST code inspection</strong> – R code submitted via
+<code>execute_r</code> is parsed and checked before execution. Dangerous
+constructs are blocked: direct package access
+(<code>brightspaceR::</code>, <code>httr::</code>, <code>curl::</code>,
+etc.), metaprogramming (<code>eval</code>, <code>do.call</code>,
+<code>get</code>), shell commands (<code>system</code>,
+<code>system2</code>), file I/O (<code>readLines</code>,
+<code>writeLines</code>, etc.), and network functions
+(<code>download.file</code>, <code>url</code>). Use
+<code>write_chart()</code> for Chart.js HTML output.</p>
+<p><strong>PII field policy</strong> – A YAML policy file controls which
+columns are visible per dataset. The default policy
+(<code>inst/mcp/field_policy.yml</code>) hides PII columns like names,
+emails, and free-text comments from datasets like Users and Grade
+Results. Override with a custom policy via
+<code>BRIGHTSPACER_FIELD_POLICY</code>.</p>
+<p><strong>ID pseudonymisation</strong> – All person-referencing ID
+columns (UserId, SubmitterId, LastModifiedBy, etc.) are HMAC-hashed with
+a session-scoped key. The AI model sees deterministic pseudonyms like
+<code>usr_a3f2b1c8</code> instead of raw integers. Combined with the
+field policy, this means no names, no emails, and no reversible IDs
+reach the model.</p>
+<p><strong>Audit logging</strong> – Every tool call is recorded in
+<code>mcp_audit.jsonl</code> in the output directory. Entries include
+timestamp, tool name, arguments, response size, and whether code was
+blocked.</p>
+<p>See <code><a href="../articles/mcp-server-design.html">vignette("mcp-server-design")</a></code> for implementation
+details and <code><a href="../articles/privacy-compliance.html">vignette("privacy-compliance")</a></code> for a full
+assessment against ENISA, NIST, ISO 25237, GDPR, and FERPA standards —
+including how to apply the same protections in regular R scripts.</p>
 </div>
 <div class="section level2">
 <h2 id="troubleshooting">Troubleshooting<a class="anchor" aria-label="anchor" href="#troubleshooting"></a>

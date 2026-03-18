@@ -157,10 +157,13 @@ Example conversation:
 > – all without you writing a line of code.
 
 The server exposes 7 tools: dataset discovery, column-level statistics,
-filtered/grouped summaries, and a full R execution environment with a
-persistent workspace. It runs locally, uses your existing OAuth2
+filtered/grouped summaries, and a safety-checked R execution environment
+with a persistent workspace. It runs locally, uses your existing OAuth2
 credentials, and produces self-contained HTML charts you can share with
-colleagues.
+colleagues. Built-in security layers include AST code inspection (blocks
+shell commands, file I/O, direct API access), PII field policies (strips
+names, emails, and comments from datasets before they reach the model),
+and audit logging (JSONL record of every tool call).
 
 ### Setup
 
@@ -271,6 +274,12 @@ Discover and download Brightspace Data Sets.
   : Download all available datasets
 - [`bs_get_dataset()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_dataset.md)
   : Get a dataset by name
+- [`bs_get_dataset_current()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_dataset_current.md)
+  : Get current dataset by merging full and differential extracts
+- [`bs_apply_diffs()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_apply_diffs.md)
+  : Merge full and differential BDS extracts
+- [`bs_diff_manifest()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_diff_manifest.md)
+  : Inspect the extract manifest from a merged BDS dataset
 
 ## Joins
 
@@ -357,6 +366,18 @@ retention.
 - [`bs_course_summary()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_course_summary.md)
   : Summarize course effectiveness
 
+## Privacy
+
+Pseudonymisation and PII field policy tools for privacy-compliant
+analysis.
+
+- [`bs_pseudonymise_id()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_pseudonymise_id.md)
+  : Pseudonymise a vector of IDs
+- [`bs_pseudonymise_df()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_pseudonymise_df.md)
+  : Pseudonymise person-referencing ID columns in a data frame
+- [`bs_apply_field_policy()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_apply_field_policy.md)
+  : Apply a PII field policy to a data frame
+
 ## Configuration
 
 Package configuration options.
@@ -403,3 +424,8 @@ Package configuration options.
   Implementation](https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-server-design.md):
 - [MCP Server Test
   Script](https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-test-script.md):
+
+### Privacy & Compliance
+
+- [Privacy Compliance and De-identification
+  Standards](https://pcstrategyandopsco.github.io/brightspaceR/articles/privacy-compliance.md):

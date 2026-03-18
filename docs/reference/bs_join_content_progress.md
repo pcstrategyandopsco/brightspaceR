@@ -26,9 +26,11 @@ A joined tibble.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 content <- bs_get_dataset("Content Objects")
 progress <- bs_get_dataset("Content User Progress")
 bs_join_content_progress(content, progress)
-} # }
+}
+# }
 ```

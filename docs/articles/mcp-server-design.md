@@ -37,13 +37,13 @@ self-contained HTML files:
 
 1.  `execute_r` aggregates data in R (counts, means, distributions)
 2.  Claude builds an HTML string with Chart.js loaded from CDN
-3.  [`writeLines()`](https://rdrr.io/r/base/writeLines.html) saves it to
-    the output directory
+3.  `write_chart(html, 'name.html')` saves it safely to the output
+    directory
 4.  The user opens the HTML file in their browser
 
 &nbsp;
 
-    execute_r → aggregate data → paste0(Chart.js HTML) → writeLines()
+    execute_r → aggregate data → paste0(Chart.js HTML) → write_chart()
         ↓
     Interactive chart in browser (tooltips, hover, responsive)
 
@@ -113,8 +113,12 @@ users <- bs_get_dataset("Users") %>% filter(role_name == "Student")
 users %>% count(org_unit_id, sort = TRUE)
 ```
 
-The workspace also exposes `output_dir` – the path to the configured
-output directory – so Chart.js HTML files can be written there directly.
+The workspace also exposes:
+
+- `output_dir` – the path to the configured output directory
+- `write_chart(html, filename)` – safe writer that only accepts `.html`
+  files and only writes to the output directory (bare filenames only, no
+  path traversal)
 
 ### Output directory
 
@@ -186,7 +190,37 @@ chart file path) rather than raw data.
 ### Defensive execution
 
 `execute_r` includes several layers of protection against runaway
-queries:
+queries and unsafe code:
+
+**AST code inspection**: Before any code executes, `check_code_safety()`
+parses it into an abstract syntax tree and walks every node looking for
+blocked constructs. Blocked categories:
+
+| Category | Examples |
+|----|----|
+| **Direct package access** | `brightspaceR::`, `httr::`, `httr2::`, `curl::`, `jsonlite::`, `config::` |
+| **Metaprogramming** | `eval`, `evalq`, `do.call`, `get`, `mget`, `match.fun` |
+| **Environment access** | `Sys.getenv`, `Sys.setenv` |
+| **Shell commands** | `system`, `system2`, `shell` |
+| **File I/O** | `readLines`, `writeLines`, `readRDS`, `saveRDS`, `write.csv`, `scan`, `file` |
+| **Network** | `download.file`, `url`, `socketConnection` |
+
+If any blocked construct is detected, the code is rejected with an error
+listing the specific violations. Syntax errors pass through the safety
+check (they’ll fail at eval anyway). Comments and string literals
+containing blocked names are not flagged – only actual function calls in
+the AST are checked.
+
+The `write_chart(html, filename)` function in the workspace provides a
+safe alternative to
+[`writeLines()`](https://rdrr.io/r/base/writeLines.html) for Chart.js
+output. It only accepts `.html` filenames and only writes to the output
+directory.
+
+**PII field policy**: Datasets are filtered through a YAML-driven column
+allowlist before they enter the cache (and thus before any code can
+access them). See the [PII Field Policy](#pii-field-policy) section
+below.
 
 **30-second timeout**: Every eval is wrapped in
 `setTimeLimit(elapsed = 30)`. If a Cartesian join or unfiltered
@@ -210,11 +244,18 @@ when either input exceeds 50K rows.
 
 **Server instructions**: The `initialize` response tells Claude to
 always call `describe_dataset` first to check row counts, filter early
-on large tables, and never return raw unfiltered data frames.
+on large tables, and never return raw unfiltered data frames. It also
+documents the safety policy so Claude knows which functions are blocked
+and uses `write_chart()` instead of
+[`writeLines()`](https://rdrr.io/r/base/writeLines.html).
 
-These defenses are layered: instructions guide Claude to do the right
-thing, row-count messages let it self-correct mid-execution, and the
-timeout is the hard backstop.
+**Audit logging**: Every tool call is logged to `mcp_audit.jsonl`. See
+the [Audit Logging](#audit-logging) section below.
+
+These defenses are layered: the AST inspector blocks dangerous code, the
+field policy strips PII, instructions guide Claude to do the right
+thing, row-count messages let it self-correct mid-execution, the timeout
+is the hard backstop, and the audit log records everything for review.
 
 ## Tool Reference
 
@@ -339,7 +380,7 @@ joins, and visualizes.
          count(bracket)
 
        html <- paste0('<!DOCTYPE html>...<script src=\"https://cdn.jsdelivr.net/npm/chart.js\"></script>...')
-       writeLines(html, file.path(output_dir, 'stat101_grades.html'))
+       write_chart(html, 'stat101_grades.html')
        browseURL(file.path(output_dir, 'stat101_grades.html'))
        """)
        -> Opens interactive bar chart in browser
@@ -348,14 +389,208 @@ Note how calls 3 and 4 share variables (`grades`, `orgs`, `stat101`) via
 the persistent workspace. Claude computes with R, then builds Chart.js
 HTML for interactive rendering.
 
+## PII Field Policy
+
+Raw BDS datasets contain personally identifiable information – names,
+emails, free-text comments – that shouldn’t flow to an AI model. The
+server applies a YAML-driven column policy to every dataset before it
+enters the cache.
+
+### Policy file
+
+The default policy lives at `inst/mcp/field_policy.yml`. Each dataset
+entry specifies a mode:
+
+| Mode     | Behaviour                                                    |
+|----------|--------------------------------------------------------------|
+| `allow`  | Only listed columns pass through; everything else is dropped |
+| `redact` | Listed columns have their values replaced with `[REDACTED]`  |
+| `all`    | All columns pass through unchanged                           |
+
+Datasets not listed in the policy pass through with a warning to stderr.
+
+### Default policy
+
+Datasets with PII use `allow` mode to expose only safe columns:
+
+| Dataset | Hidden columns |
+|----|----|
+| **Users** | UserName, FirstName, MiddleName, LastName, ExternalEmail, OrgDefinedId |
+| **Grade Results** | Comments, PrivateComments |
+| **Assignment Submissions** | Feedback, FeedbackUserId |
+| **Quiz User Answers** | Comment, LastModifiedBy |
+
+All other datasets (Org Units, Role Details, Content Objects, etc.) use
+`all` mode since they contain no direct PII.
+
+### Custom policy
+
+Override the default by setting the `BRIGHTSPACER_FIELD_POLICY`
+environment variable to the path of your custom YAML file:
+
+``` json
+{
+  "env": {
+    "BRIGHTSPACER_FIELD_POLICY": "/path/to/custom_field_policy.yml"
+  }
+}
+```
+
+Resolution order: `BRIGHTSPACER_FIELD_POLICY` env var \>
+`field_policy.yml` in the working directory \> bundled
+`inst/mcp/field_policy.yml`.
+
+### Where filtering happens
+
+The field policy is applied inside `get_cached_dataset()`, after
+fetching but before caching. The server delegates to
+[`bs_apply_field_policy()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_apply_field_policy.md)
+from the package (the same function available to regular R scripts via
+[`library(brightspaceR)`](https://pcstrategyandopsco.github.io/brightspaceR/)).
+This means all downstream consumers – `describe_dataset`,
+`get_data_summary`, and `execute_r` via
+[`bs_get_dataset()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_dataset.md)
+– see only the filtered columns. There is no way for code running in the
+workspace to access columns removed by the policy.
+
+## ID Pseudonymisation
+
+Even after the PII field policy strips names and emails,
+person-referencing ID columns (UserId, SubmitterId, LastModifiedBy,
+etc.) still contain raw integers that could be reversed to real people
+by anyone with Brightspace admin access. The pseudonymisation layer
+addresses this by HMAC-hashing all person IDs with a session-scoped key.
+
+### How it works
+
+At server startup, a 32-byte random key is generated via
+`openssl::rand_bytes(32)` and stored in a module-level variable. Each
+person ID value is hashed with HMAC-SHA256
+([`openssl::sha256()`](https://jeroen.r-universe.dev/openssl/reference/hash.html)),
+truncated to the first 8 hex characters, and prefixed with `usr_`. For
+example, UserId `12345` becomes `usr_a3f2b1c8`.
+
+- **Deterministic within a session**: the same ID always maps to the
+  same pseudonym, so joins, grouping, and cross-dataset references work
+  normally.
+- **Unrecoverable across sessions**: when the server restarts, a new key
+  is generated and all pseudonyms change. There is no stored mapping to
+  reverse.
+- **NA passthrough**: `NA` values remain `NA`.
+
+### Which columns are hashed
+
+A built-in registry (exported as `PERSON_ID_COLUMNS` internally, used by
+[`bs_pseudonymise_df()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_pseudonymise_df.md))
+maps dataset names to their person-referencing ID columns. Only person
+IDs are hashed — structural IDs (OrgUnitId, GradeObjectId,
+ContentObjectId, etc.) are left untouched so the AI can still join and
+filter on them.
+
+| Dataset                     | Pseudonymised columns                |
+|-----------------------------|--------------------------------------|
+| Users                       | UserId                               |
+| User Enrollments            | UserId                               |
+| Grade Results               | UserId, LastModifiedBy               |
+| Assignment Submissions      | SubmitterId, FeedbackUserId          |
+| Quiz User Answers           | LastModifiedBy                       |
+| Content User Progress       | UserId                               |
+| Quiz Attempts               | UserId                               |
+| Discussion Posts            | UserId                               |
+| Discussion Topics           | LastPostUserId, DeletedByUserId      |
+| Content Objects             | CreatedBy, LastModifiedBy, DeletedBy |
+| Grade Objects               | DeletedByUserId                      |
+| Enrollments and Withdrawals | UserId, ModifiedByUserId             |
+| Final Grades                | UserId                               |
+| Attendance Records          | UserId                               |
+
+Some of these columns may already be dropped by the field policy (e.g.,
+FeedbackUserId in Assignment Submissions). The pseudonymisation function
+silently skips columns not present in the data frame.
+
+### Where it runs
+
+Pseudonymisation runs inside `get_cached_dataset()`, after field policy
+filtering and before caching. The server calls
+[`bs_pseudonymise_df()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_pseudonymise_df.md)
+from the package (the same function available to regular R scripts) with
+the session-scoped key. This means all downstream consumers —
+`describe_dataset`, `get_data_summary`, and `execute_r` via
+[`bs_get_dataset()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_dataset.md)
+— see only pseudonymised IDs. The pseudonymisation is baked into the
+cache, so it is applied once per dataset per session.
+
+### Combined effect with field policy
+
+Together, the PII field policy and ID pseudonymisation achieve full
+pseudonymisation:
+
+1.  **Field policy** drops direct identifiers: FirstName, LastName,
+    Email, UserName, OrgDefinedId, free-text comments
+2.  **Pseudonymisation** hashes indirect identifiers: UserId,
+    SubmitterId, LastModifiedBy, etc.
+
+The AI model cannot see who a person is (no names/emails) or
+reverse-engineer their identity from an ID (hashed with a session-scoped
+key).
+
+For a detailed assessment of how these protections align with ENISA,
+NIST, ISO 25237, GDPR, FERPA, and HIPAA standards — and how to apply the
+same techniques in your own R scripts — see
+[`vignette("privacy-compliance")`](https://pcstrategyandopsco.github.io/brightspaceR/articles/privacy-compliance.md).
+
+## Audit Logging
+
+Every tool call is recorded in an append-only JSONL file at
+`{output_dir}/mcp_audit.jsonl`. Each line is a JSON object with:
+
+| Field                | Description                                        |
+|----------------------|----------------------------------------------------|
+| `timestamp`          | ISO 8601 with milliseconds (UTC)                   |
+| `tool`               | Tool name (e.g., `execute_r`, `describe_dataset`)  |
+| `arguments`          | Tool arguments (code truncated to 500 chars)       |
+| `response_bytes`     | Approximate response size in bytes                 |
+| `code_blocked`       | `true` if code was rejected by the AST inspector   |
+| `blocked_constructs` | List of blocked functions/packages (if applicable) |
+| `is_error`           | `true` if the tool call resulted in an error       |
+
+Special entries:
+
+- `session_start` – logged when the server starts (after authentication)
+- `session_end` – logged when the server shuts down
+
+The audit log is machine-readable and can be reviewed directly or
+post-processed with standard JSON tools:
+
+``` bash
+# View all blocked code attempts
+cat brightspaceR_output/mcp_audit.jsonl | jq 'select(.code_blocked == true)'
+
+# Count tool calls by type
+cat brightspaceR_output/mcp_audit.jsonl | jq -r '.tool' | sort | uniq -c | sort -rn
+```
+
 ## Security Considerations
 
-`execute_r` evaluates arbitrary R code. This is intentional – the server
-runs locally, authenticated with the user’s own Brightspace credentials.
-The trust boundary is the same as opening an R console. The workspace is
-sandboxed only in the sense that it’s a child environment of
-[`globalenv()`](https://rdrr.io/r/base/environment.html), not a separate
-process.
+The MCP server is designed for single-user local deployment. The trust
+boundary is the same as opening an R console – the server runs locally,
+authenticated with the user’s own Brightspace credentials.
+
+Within that boundary, several layers protect against accidental data
+exposure and code misuse:
+
+1.  **AST code inspection** blocks dangerous functions (API access,
+    shell commands, file I/O, metaprogramming) before code executes
+2.  **PII field policy** strips sensitive columns (names, emails,
+    comments) before data enters the workspace
+3.  **ID pseudonymisation** HMAC-hashes all person-referencing ID
+    columns with a session-scoped key, so the AI sees `usr_a3f2b1c8`
+    instead of raw integers
+4.  **Audit logging** records every tool call, blocked attempt, and
+    error for post-hoc review
+5.  **Execution timeout** (30 seconds) prevents runaway queries
+6.  **Size guard** (~800KB) truncates oversized responses
+7.  **Row-count warnings** help the model self-correct on large datasets
 
 For production deployments where multiple users share a server,
 `execute_r` would need process-level isolation (e.g., callr). That’s out

@@ -27,8 +27,10 @@ A tibble with one row per user per course.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 enriched <- bs_enrich_enrollments(enroll, org_units, users)
 summary <- bs_summarize_enrollments(enriched)
-} # }
+}
+# }
 ```

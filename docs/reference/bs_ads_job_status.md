@@ -23,8 +23,10 @@ A list with `export_job_id`, `name`, `status` (integer), `status_text`
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 status <- bs_ads_job_status("abc-123")
 status$status_text
-} # }
+}
+# }
 ```

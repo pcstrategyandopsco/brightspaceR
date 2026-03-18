@@ -26,8 +26,10 @@ A summarised tibble sorted by `completion_rate`.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 usage <- bs_get_ads("Learner Usage")
 bs_retention_summary(usage, by = "course")
-} # }
+}
+# }
 ```

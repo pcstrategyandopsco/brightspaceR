@@ -27,9 +27,11 @@ A joined tibble with grade object name, type, max points, and calculated
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 grades <- bs_get_dataset("Grade Results")
 objects <- bs_get_dataset("Grade Objects")
 bs_grade_summary(grades, objects)
-} # }
+}
+# }
 ```

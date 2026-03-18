@@ -27,3 +27,8 @@
   Implementation](https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-server-design.md):
 - [MCP Server Test
   Script](https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-test-script.md):
+
+### Privacy & Compliance
+
+- [Privacy Compliance and De-identification
+  Standards](https://pcstrategyandopsco.github.io/brightspaceR/articles/privacy-compliance.md):

@@ -27,10 +27,12 @@ A summarised tibble sorted by `mean_progress` descending (or
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 usage <- bs_get_ads("Learner Usage")
 bs_engagement_summary(usage, by = "course")
 bs_engagement_summary(usage, by = "department")
 bs_engagement_summary(usage, by = "user")
-} # }
+}
+# }
 ```

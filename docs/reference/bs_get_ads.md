@@ -36,9 +36,11 @@ A tibble of the dataset contents.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 usage <- bs_get_ads("Learner Usage")
 usage <- bs_get_ads("Learner Usage",
   filters = bs_ads_filter(start_date = "2024-01-01"))
-} # }
+}
+# }
 ```

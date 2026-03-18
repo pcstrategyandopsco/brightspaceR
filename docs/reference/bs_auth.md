@@ -60,12 +60,14 @@ automatically — including in non-interactive scripts run via `Rscript`.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 bs_auth()
 bs_auth(
   client_id = "my-client-id",
   client_secret = "my-secret",
   instance_url = "https://myschool.brightspace.com"
 )
-} # }
+}
+# }
 ```

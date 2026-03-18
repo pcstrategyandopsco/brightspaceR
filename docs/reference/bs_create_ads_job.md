@@ -31,8 +31,10 @@ A tibble with one row containing `export_job_id`, `dataset_id`, `name`,
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 job <- bs_create_ads_job("Learner Usage")
 job$export_job_id
-} # }
+}
+# }
 ```

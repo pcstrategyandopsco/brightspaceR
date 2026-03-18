@@ -31,9 +31,11 @@ risk_score descending.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 usage <- bs_get_ads("Learner Usage")
 at_risk <- bs_identify_at_risk(usage)
 at_risk <- bs_identify_at_risk(usage, thresholds = list(progress = 30))
-} # }
+}
+# }
 ```

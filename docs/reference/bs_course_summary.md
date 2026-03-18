@@ -31,11 +31,13 @@ descending.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 usage <- bs_get_ads("Learner Usage")
 bs_course_summary(usage)
 
 awards <- bs_get_ads("Awards Issued")
 bs_course_summary(usage, awards = awards)
-} # }
+}
+# }
 ```

@@ -16,8 +16,10 @@ A tibble with columns: `schema_id`, `plugin_id`, `name`, `description`,
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 datasets <- bs_list_datasets()
 datasets
-} # }
+}
+# }
 ```

@@ -105,9 +105,8 @@ prior work. Should return a count.
 1.  Call `execute_r` to compute the counts (e.g.,
     `count(role_name, sort = TRUE)`)
 2.  Build a self-contained HTML string with Chart.js from CDN
-3.  Write it with
-    [`writeLines()`](https://rdrr.io/r/base/writeLines.html) to the
-    output directory
+3.  Write it with `write_chart(html, 'chart_name.html')` to the output
+    directory
 4.  Call [`browseURL()`](https://rdrr.io/r/utils/browseURL.html) to open
     it
 
@@ -121,8 +120,9 @@ interactive bar chart with tooltips and hover effects.
 > Use ggplot to create a bar chart of enrollment counts by role. Return
 > the plot object.
 
-**Expected:** Claude calls `execute_r` with ggplot code (no `ggsave()`).
-The server detects the ggplot object and saves it as PNG + HTML viewer.
+**Expected:** Claude calls `execute_r` with ggplot code (no
+[`ggsave()`](https://ggplot2.tidyverse.org/reference/ggsave.html)). The
+server detects the ggplot object and saves it as PNG + HTML viewer.
 Response should include:
 
 1.  A text line like “Plot saved: Enrollments by Role (1 layer)”
@@ -245,6 +245,91 @@ removed). Instead it should either:
 **Expected:** Claude calls `list_schemas`. Returns a list of schema
 names with their key columns (the foreign keys used by
 [`bs_join()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_join.md)).
+
+## Test 17: AST code inspection – blocked code
+
+**Prompt:**
+
+> Run this R code: `system("whoami")`
+
+**Expected:** Claude calls `execute_r`. The result should have
+`isError: true` with a message listing “system” as a blocked construct.
+The code is **never executed** – it is rejected before eval. Claude
+should explain that shell commands are blocked by the safety policy.
+
+## Test 18: AST code inspection – blocked package access
+
+**Prompt:**
+
+> Run this R code: `httr::GET("http://example.com")`
+
+**Expected:** Claude calls `execute_r`. The result should reject the
+code, citing [`httr::GET`](https://httr.r-lib.org/reference/GET.html) as
+blocked. Direct access to packages like `httr`, `curl`, `brightspaceR`,
+`jsonlite`, and `config` is not permitted via `execute_r`.
+
+## Test 19: AST code inspection – safe code passes
+
+**Prompt:**
+
+> Run this R code:
+> `mtcars %>% filter(cyl == 6) %>% summarise(mean_mpg = mean(mpg))`
+
+**Expected:** The code executes successfully and returns a one-row
+tibble with the mean MPG for 6-cylinder cars. Standard dplyr, ggplot2,
+and arithmetic operations are not blocked.
+
+## Test 20: PII field policy – Users dataset
+
+**Prompt:**
+
+> Describe the Users dataset. What columns does it have?
+
+**Expected:** Claude calls `describe_dataset`. The response should list
+columns like UserId, Organization, IsActive, SignupDate, but should
+**not** include FirstName, LastName, ExternalEmail, UserName,
+MiddleName, or OrgDefinedId. These PII columns are stripped by the field
+policy before the data reaches the workspace.
+
+## Test 21: PII field policy – Grade Results
+
+**Prompt:**
+
+> Describe the Grade Results dataset.
+
+**Expected:** The column list should include GradeObjectId, OrgUnitId,
+UserId, PointsNumerator, etc., but should **not** include Comments or
+PrivateComments.
+
+## Test 22: Audit log exists
+
+**Prompt:**
+
+> Run this R code:
+> `file.exists(file.path(output_dir, "mcp_audit.jsonl"))`
+
+**Expected:** Returns `TRUE`. The audit log file is created at server
+startup and records every tool call. After running several tests, you
+can inspect it directly:
+
+``` bash
+cat <output_dir>/mcp_audit.jsonl | head -5
+```
+
+Each line is a JSON object with timestamp, tool name, arguments, and
+status fields.
+
+## Test 23: ID pseudonymisation — UserId is hashed
+
+**Prompt:**
+
+> Run this R code:
+> `bs_get_dataset("Users") %>% select(UserId) %>% head(5)`
+
+**Expected:** The UserId column should contain pseudonymised values like
+`usr_a3f2b1c8`, not raw integers. Every value should start with `usr_`
+followed by 8 hex characters. This confirms that person-referencing IDs
+are hashed before reaching the workspace.
 
 ## Troubleshooting
 

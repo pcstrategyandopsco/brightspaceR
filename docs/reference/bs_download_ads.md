@@ -26,7 +26,9 @@ A tibble of the dataset contents.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 result <- bs_download_ads("abc-123", "Learner Usage")
-} # }
+}
+# }
 ```

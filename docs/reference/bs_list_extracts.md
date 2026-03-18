@@ -27,8 +27,10 @@ A tibble with columns: `extract_id`, `extract_type`, `bds_type`,
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 datasets <- bs_list_datasets()
 extracts <- bs_list_extracts(datasets$schema_id[1], datasets$plugin_id[1])
-} # }
+}
+# }
 ```

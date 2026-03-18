@@ -75,7 +75,7 @@ Sets:
 | `datasets:bds:read` | [`bs_list_datasets()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_list_datasets.md), [`bs_get_schema()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_schema.md) |
 | `datahub:dataexports:read` | [`bs_list_extracts()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_list_extracts.md), [`bs_download_dataset()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_download_dataset.md) |
 | `datahub:dataexports:download` | [`bs_get_dataset()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_dataset.md), [`bs_download_all()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_download_all.md) |
-| `users:profile:read` | [`bs_check_scopes()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_check_scopes.md) |
+| `users:profile:read` | [`bs_check_scopes()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_check_scopes.md) (Tier 1 verification) |
 
 **Scope string for Tier 1:**
 
@@ -117,16 +117,28 @@ etc.):
 
 After authenticating, run
 [`bs_check_scopes()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_check_scopes.md)
-to confirm which capabilities are available:
+to confirm which capabilities are available. Results are grouped by
+tier:
 
 ``` r
 
 bs_check_scopes()
 #> i Testing API access with current token...
-#> v All 4 scope checks passed.
+#> v Tier 1 (BDS): all 3 checks passed.
+#> v Tier 2 (ADS): all 1 checks passed.
 ```
 
-If any checks fail, compare the registered scopes in Brightspace
+If you registered **Tier 1 scopes only**, the output will look like:
+
+``` r
+
+bs_check_scopes()
+#> i Testing API access with current token...
+#> v Tier 1 (BDS): all 3 checks passed.
+#> i Tier 2 (ADS): not available (BDS functions still work fine).
+```
+
+If any Tier 1 checks fail, compare the registered scopes in Brightspace
 (**Admin Tools** \> **Manage Extensibility** \> **OAuth 2.0** \> your
 app) with the scope strings above.
 
@@ -296,7 +308,8 @@ bs_has_token()
 # Verify API scopes are configured correctly
 bs_check_scopes()
 #> i Testing API access with current token...
-#> v All 4 scope checks passed.
+#> v Tier 1 (BDS): all 3 checks passed.
+#> v Tier 2 (ADS): all 1 checks passed.
 
 # List available BDS datasets
 datasets <- bs_list_datasets()
@@ -350,10 +363,10 @@ authenticated with may not have permission to access Data Hub. Check:
 
 - Run
   [`bs_check_scopes()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_check_scopes.md)
-  to see which API capabilities are available.
-- The registered scopes include `datasets:bds:read`,
-  `datahub:dataexports:read`, and `datahub:dataexports:download` for
-  BDS.
+  to see which API capabilities are available. Results are grouped into
+  Tier 1 (BDS) and Tier 2 (ADS) so you can see which tier is working.
+- For BDS, you need `datasets:bds:read`, `datahub:dataexports:read`, and
+  `datahub:dataexports:download`.
 - For ADS access, add the `reporting:*` scopes listed above.
 - Your Brightspace user role has the **Data Hub** permissions enabled
   (typically requires an admin or a role with “Can Access Data Hub”

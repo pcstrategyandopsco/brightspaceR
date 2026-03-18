@@ -26,9 +26,11 @@ A joined tibble.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 enrollments <- bs_get_dataset("User Enrollments")
 org_units <- bs_get_dataset("Org Units")
 bs_join_enrollments_orgunits(enrollments, org_units)
-} # }
+}
+# }
 ```

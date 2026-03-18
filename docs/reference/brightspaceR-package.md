@@ -1,10 +1,10 @@
-# brightspaceR: Access D2L Brightspace Data Sets via the BDS API
+# brightspaceR: Access D2L 'Brightspace' Data Sets via the 'BDS' API
 
-Connect to the D2L Brightspace Data Sets (BDS) API via OAuth2, download
-all available datasets as tidy data frames with proper types, join them
-using convenience functions that know the foreign key relationships, and
-analyse student engagement, performance, and retention with composable
-analytics functions.
+Connect to the D2L 'Brightspace' Data Sets ('BDS') API via 'OAuth2',
+download all available datasets as tidy data frames with proper types,
+join them using convenience functions that know the foreign key
+relationships, and analyse student engagement, performance, and
+retention with ready-made analytics functions.
 
 ## See also
 
@@ -19,4 +19,4 @@ Useful links:
 
 ## Author
 
-**Maintainer**: Peeyoosh Chandra <peeyoosh.chandra@example.com>
+**Maintainer**: Peeyoosh Chandra <pc@strategyandops.co>

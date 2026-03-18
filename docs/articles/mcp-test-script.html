@@ -183,7 +183,8 @@ role.</p>
 <li>Call <code>execute_r</code> to compute the counts (e.g.,
 <code>count(role_name, sort = TRUE)</code>)</li>
 <li>Build a self-contained HTML string with Chart.js from CDN</li>
-<li>Write it with <code><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines()</a></code> to the output directory</li>
+<li>Write it with <code>write_chart(html, 'chart_name.html')</code> to
+the output directory</li>
 <li>Call <code><a href="https://rdrr.io/r/utils/browseURL.html" class="external-link">browseURL()</a></code> to open it</li>
 </ol>
 <p>The response should include the HTML file path. Opening it shows an
@@ -198,7 +199,7 @@ interactive bar chart with tooltips and hover effects.</p>
 the plot object.</p>
 </blockquote>
 <p><strong>Expected:</strong> Claude calls <code>execute_r</code> with
-ggplot code (no <code>ggsave()</code>). The server detects the ggplot
+ggplot code (no <code><a href="https://ggplot2.tidyverse.org/reference/ggsave.html" class="external-link">ggsave()</a></code>). The server detects the ggplot
 object and saves it as PNG + HTML viewer. Response should include:</p>
 <ol style="list-style-type: decimal">
 <li>A text line like “Plot saved: Enrollments by Role (1 layer)”</li>
@@ -343,6 +344,98 @@ tool” error</li>
 <p><strong>Expected:</strong> Claude calls <code>list_schemas</code>.
 Returns a list of schema names with their key columns (the foreign keys
 used by <code><a href="../reference/bs_join.html">bs_join()</a></code>).</p>
+</div>
+<div class="section level2">
+<h2 id="test-17-ast-code-inspection-blocked-code">Test 17: AST code inspection – blocked code<a class="anchor" aria-label="anchor" href="#test-17-ast-code-inspection-blocked-code"></a>
+</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Run this R code: <code>system("whoami")</code></p>
+</blockquote>
+<p><strong>Expected:</strong> Claude calls <code>execute_r</code>. The
+result should have <code>isError: true</code> with a message listing
+“system” as a blocked construct. The code is <strong>never
+executed</strong> – it is rejected before eval. Claude should explain
+that shell commands are blocked by the safety policy.</p>
+</div>
+<div class="section level2">
+<h2 id="test-18-ast-code-inspection-blocked-package-access">Test 18: AST code inspection – blocked package access<a class="anchor" aria-label="anchor" href="#test-18-ast-code-inspection-blocked-package-access"></a>
+</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Run this R code: <code>httr::GET("http://example.com")</code></p>
+</blockquote>
+<p><strong>Expected:</strong> Claude calls <code>execute_r</code>. The
+result should reject the code, citing <code><a href="https://httr.r-lib.org/reference/GET.html" class="external-link">httr::GET</a></code> as blocked.
+Direct access to packages like <code>httr</code>, <code>curl</code>,
+<code>brightspaceR</code>, <code>jsonlite</code>, and
+<code>config</code> is not permitted via <code>execute_r</code>.</p>
+</div>
+<div class="section level2">
+<h2 id="test-19-ast-code-inspection-safe-code-passes">Test 19: AST code inspection – safe code passes<a class="anchor" aria-label="anchor" href="#test-19-ast-code-inspection-safe-code-passes"></a>
+</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Run this R code:
+<code>mtcars %&gt;% filter(cyl == 6) %&gt;% summarise(mean_mpg = mean(mpg))</code></p>
+</blockquote>
+<p><strong>Expected:</strong> The code executes successfully and returns
+a one-row tibble with the mean MPG for 6-cylinder cars. Standard dplyr,
+ggplot2, and arithmetic operations are not blocked.</p>
+</div>
+<div class="section level2">
+<h2 id="test-20-pii-field-policy-users-dataset">Test 20: PII field policy – Users dataset<a class="anchor" aria-label="anchor" href="#test-20-pii-field-policy-users-dataset"></a>
+</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Describe the Users dataset. What columns does it have?</p>
+</blockquote>
+<p><strong>Expected:</strong> Claude calls
+<code>describe_dataset</code>. The response should list columns like
+UserId, Organization, IsActive, SignupDate, but should
+<strong>not</strong> include FirstName, LastName, ExternalEmail,
+UserName, MiddleName, or OrgDefinedId. These PII columns are stripped by
+the field policy before the data reaches the workspace.</p>
+</div>
+<div class="section level2">
+<h2 id="test-21-pii-field-policy-grade-results">Test 21: PII field policy – Grade Results<a class="anchor" aria-label="anchor" href="#test-21-pii-field-policy-grade-results"></a>
+</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Describe the Grade Results dataset.</p>
+</blockquote>
+<p><strong>Expected:</strong> The column list should include
+GradeObjectId, OrgUnitId, UserId, PointsNumerator, etc., but should
+<strong>not</strong> include Comments or PrivateComments.</p>
+</div>
+<div class="section level2">
+<h2 id="test-22-audit-log-exists">Test 22: Audit log exists<a class="anchor" aria-label="anchor" href="#test-22-audit-log-exists"></a>
+</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Run this R code:
+<code>file.exists(file.path(output_dir, "mcp_audit.jsonl"))</code></p>
+</blockquote>
+<p><strong>Expected:</strong> Returns <code>TRUE</code>. The audit log
+file is created at server startup and records every tool call. After
+running several tests, you can inspect it directly:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">cat</span> <span class="op">&lt;</span>output_dir<span class="op">&gt;</span>/mcp_audit.jsonl <span class="kw">|</span> <span class="fu">head</span> <span class="at">-5</span></span></code></pre></div>
+<p>Each line is a JSON object with timestamp, tool name, arguments, and
+status fields.</p>
+</div>
+<div class="section level2">
+<h2 id="test-23-id-pseudonymisation-userid-is-hashed">Test 23: ID pseudonymisation — UserId is hashed<a class="anchor" aria-label="anchor" href="#test-23-id-pseudonymisation-userid-is-hashed"></a>
+</h2>
+<p><strong>Prompt:</strong></p>
+<blockquote>
+<p>Run this R code:
+<code>bs_get_dataset("Users") %&gt;% select(UserId) %&gt;% head(5)</code></p>
+</blockquote>
+<p><strong>Expected:</strong> The UserId column should contain
+pseudonymised values like <code>usr_a3f2b1c8</code>, not raw integers.
+Every value should start with <code>usr_</code> followed by 8 hex
+characters. This confirms that person-referencing IDs are hashed before
+reaching the workspace.</p>
 </div>
 <div class="section level2">
 <h2 id="troubleshooting">Troubleshooting<a class="anchor" aria-label="anchor" href="#troubleshooting"></a>

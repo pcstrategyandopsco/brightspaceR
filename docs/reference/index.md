@@ -29,6 +29,12 @@ Discover and download Brightspace Data Sets.
   : Download all available datasets
 - [`bs_get_dataset()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_dataset.md)
   : Get a dataset by name
+- [`bs_get_dataset_current()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_dataset_current.md)
+  : Get current dataset by merging full and differential extracts
+- [`bs_apply_diffs()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_apply_diffs.md)
+  : Merge full and differential BDS extracts
+- [`bs_diff_manifest()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_diff_manifest.md)
+  : Inspect the extract manifest from a merged BDS dataset
 
 ## Joins
 
@@ -114,6 +120,18 @@ retention.
   : Summarize retention and dropout rates
 - [`bs_course_summary()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_course_summary.md)
   : Summarize course effectiveness
+
+## Privacy
+
+Pseudonymisation and PII field policy tools for privacy-compliant
+analysis.
+
+- [`bs_pseudonymise_id()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_pseudonymise_id.md)
+  : Pseudonymise a vector of IDs
+- [`bs_pseudonymise_df()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_pseudonymise_df.md)
+  : Pseudonymise person-referencing ID columns in a data frame
+- [`bs_apply_field_policy()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_apply_field_policy.md)
+  : Apply a PII field policy to a data frame
 
 ## Configuration
 

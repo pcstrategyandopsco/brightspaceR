@@ -157,10 +157,13 @@ Example conversation:
 > – all without you writing a line of code.
 
 The server exposes 7 tools: dataset discovery, column-level statistics,
-filtered/grouped summaries, and a full R execution environment with a
-persistent workspace. It runs locally, uses your existing OAuth2
+filtered/grouped summaries, and a safety-checked R execution environment
+with a persistent workspace. It runs locally, uses your existing OAuth2
 credentials, and produces self-contained HTML charts you can share with
-colleagues.
+colleagues. Built-in security layers include AST code inspection (blocks
+shell commands, file I/O, direct API access), PII field policies (strips
+names, emails, and comments from datasets before they reach the model),
+and audit logging (JSONL record of every tool call).
 
 ### Setup
 

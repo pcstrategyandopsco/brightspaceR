@@ -1,0 +1,459 @@
+# Privacy Compliance and De-identification Standards
+
+Brightspace Data Sets contain personally identifiable information (PII):
+names, emails, student IDs, and person-referencing integer keys that can
+be reversed to real individuals by anyone with admin access. This
+vignette documents the privacy standards that informed brightspaceR’s
+design, the degree to which the package complies with each, and how to
+apply the same techniques in your own R scripts outside the MCP server.
+
+## Standards Reference
+
+### ENISA — Pseudonymisation Techniques and Best Practices
+
+The EU Agency for Cybersecurity published two key reports:
+
+- [Pseudonymisation Techniques and Best
+  Practices](https://www.enisa.europa.eu/publications/deploying-pseudonymisation-techniques)
+  (2019)
+- [Data Pseudonymisation: Advanced Techniques and Use
+  Cases](https://www.enisa.europa.eu/publications/data-pseudonymisation-advanced-techniques-and-use-cases)
+  (2021)
+
+ENISA evaluates five pseudonymisation techniques: counter, random number
+generator, hash function, HMAC (keyed-hash message authentication code),
+and encryption. HMAC is rated as **robust** — reverting the pseudonym is
+computationally infeasible as long as the key has not been compromised.
+
+**brightspaceR compliance: Strong.** The MCP server uses HMAC-SHA256
+with a 32-byte session-scoped random key (`openssl::rand_bytes(32)`).
+The key exists only in memory and dies with the server process. This
+matches ENISA’s recommended “keyed-hash function” approach with proper
+key isolation.
+
+**Gap:** ENISA recommends documenting a pseudonymisation policy and
+maintaining an inventory of pseudonymised datasets. brightspaceR handles
+the technical layer; organisational documentation is the user’s
+responsibility.
+
+### NIST SP 800-188 — De-Identifying Government Datasets
+
+[NIST Special Publication
+800-188](https://csrc.nist.gov/pubs/sp/800/188/final) (2023) provides
+techniques and governance guidance for de-identifying government
+datasets. Key principles:
+
+- Pseudonyms must not be derived from other related information about
+  the individual
+- The means of re-identification must only be known to authorised
+  parties
+- De-identification must be validated against re-identification risk
+
+**brightspaceR compliance: Partial.** The HMAC key is never exposed or
+persisted, and pseudonyms are derived solely from the ID value + secret
+key (not from other attributes). However, NIST SP 800-188 calls for
+formal re-identification risk assessment and governance documentation,
+which are outside the scope of this package.
+
+**Gap:** Users deploying brightspaceR in government or government-funded
+education contexts should perform their own re-identification risk
+assessment per NIST SP 800-188 Section 4.
+
+### NIST IR 8053 — De-Identification of Personal Information
+
+[NIST Internal Report
+8053](https://nvlpubs.nist.gov/nistpubs/ir/2015/nist.ir.8053.pdf) (2015)
+surveys de-identification and re-identification techniques. It
+establishes the taxonomy that NIST SP 800-188 builds on: suppression
+(removing fields), generalisation (reducing precision), and
+pseudonymisation (replacing identifiers with tokens).
+
+**brightspaceR compliance: Strong.** The MCP server implements two of
+the three techniques:
+
+1.  **Suppression** — the PII field policy drops names, emails,
+    comments, and other direct identifiers entirely
+2.  **Pseudonymisation** — person-referencing ID columns are HMAC-hashed
+
+Generalisation (e.g., rounding dates to month, binning ages) is not
+implemented automatically but can be applied in user code.
+
+### ISO 25237:2017 — Health Informatics: Pseudonymization
+
+[ISO 25237:2017](https://www.iso.org/standard/63553.html) is the only
+international standard specifically for pseudonymisation. While
+health-focused, its framework applies to any domain. Key requirements:
+
+- Pseudonymisation must remove the association with a data subject while
+  adding an association between characteristics and one or more
+  pseudonyms
+- Re-identification must be controlled and limited to authorised parties
+- A pseudonymisation policy must be documented
+
+**brightspaceR compliance: Partial.** The technical implementation
+satisfies ISO 25237’s pseudonymisation definition — IDs are replaced
+with deterministic pseudonyms that cannot be reversed without the key.
+However, ISO 25237 requires organisational measures (a documented
+pseudonymisation policy, controlled re-identification procedures,
+trustworthiness requirements for service operators) that are outside the
+scope of this package.
+
+**Gap:** Institutions operating under health data regulations (e.g.,
+universities with health science programs) should develop a
+pseudonymisation policy per ISO 25237 Section 6 and assess
+re-identification risk per Section 7.
+
+### GDPR Article 4(5) + EDPB Guidelines 01/2025 on Pseudonymisation
+
+Under GDPR, pseudonymised data remains personal data (unlike anonymised
+data, which falls outside GDPR scope). The [EDPB Guidelines
+01/2025](https://www.edpb.europa.eu/our-work-tools/documents/public-consultations/2025/guidelines-012025-pseudonymisation_en)
+introduced the concept of a **pseudonymisation domain** — the set of
+parties who can access both the pseudonymised data and the
+pseudonymisation secret.
+
+Key requirements:
+
+- The pseudonymisation secret must be isolated from the dataset
+- Strong access controls must restrict who can access the secret
+- The secret must be encrypted if stored digitally
+
+**brightspaceR compliance: Strong on technical measures, limited scope
+on organisational measures.** The session-scoped key is never written to
+disk, never included in any output, and exists only in the R process’s
+memory. This provides strong key isolation. However, GDPR compliance
+requires broader data protection measures (lawful basis, data processing
+agreements, DPIAs) that are the data controller’s responsibility.
+
+**Important:** Pseudonymised data is still personal data under GDPR. If
+your institution processes EU residents’ data, you must comply with GDPR
+regardless of whether pseudonymisation is applied. brightspaceR’s
+pseudonymisation is a **technical safeguard**, not a compliance
+checkbox.
+
+### FERPA — De-Identification of Education Records
+
+The [US Department of Education’s guidance on
+de-identification](https://studentprivacy.ed.gov/resources/data-de-identification-overview-basic-terms)
+specifies that education records are de-identified when:
+
+1.  All personally identifiable information (PII) is removed, **and**
+2.  The recipient cannot reasonably identify any student (a “reasonable
+    determination” standard)
+
+FERPA’s PII definition includes: name, address, personal identifiers
+(SSN, student number), indirect identifiers that alone or in combination
+could identify a student, and information requested by a person who the
+institution reasonably believes knows the identity of the student.
+
+**brightspaceR compliance: Partial.** The MCP server removes direct
+identifiers (names, emails) and pseudonymises person-referencing IDs.
+However, FERPA’s “reasonable determination” standard requires
+institution-specific analysis — whether remaining columns (e.g.,
+enrollment in a small course section + grade) could identify a student
+depends on the data context.
+
+**Gap:** Institutions should apply FERPA’s “reasonable determination”
+test to their specific data. Small cohorts (courses with \< 5 students)
+may require additional suppression (e.g., minimum cell sizes) beyond
+what brightspaceR provides automatically.
+
+### HIPAA Safe Harbor and Expert Determination
+
+[HIPAA’s de-identification
+methods](https://www.hhs.gov/hipaa/for-professionals/special-topics/de-identification/index.html)
+are widely referenced as benchmarks beyond healthcare:
+
+- **Safe Harbor**: Remove 18 specific identifier types (names, dates,
+  IDs, etc.) and verify no residual identifiers
+- **Expert Determination**: A qualified statistical expert certifies
+  that re-identification risk is “very small”
+
+**brightspaceR compliance: Not directly applicable.** HIPAA governs
+protected health information (PHI), not education records. However,
+universities with health programs may process data subject to both FERPA
+and HIPAA. The MCP server’s field policy + pseudonymisation approach
+partially aligns with Safe Harbor (direct identifiers removed, IDs
+pseudonymised) but does not address all 18 Safe Harbor identifier types
+(e.g., dates are not generalised, geographic data is not suppressed).
+
+**When relevant:** If your Brightspace instance contains health science
+course data, consult your institution’s privacy officer about HIPAA
+applicability.
+
+## Compliance Summary
+
+| Standard | Technical compliance | Organisational gap |
+|----|----|----|
+| **ENISA Pseudonymisation** | **Strong** — HMAC-SHA256, session-scoped key, key isolation | Document pseudonymisation policy |
+| **NIST SP 800-188** | **Partial** — proper hashing, key not derived from data | Re-identification risk assessment |
+| **NIST IR 8053** | **Strong** — suppression + pseudonymisation | None (survey, not prescriptive) |
+| **ISO 25237:2017** | **Partial** — correct pseudonymisation technique | Pseudonymisation policy, controlled re-identification procedures |
+| **GDPR / EDPB 01/2025** | **Strong** on key isolation | Lawful basis, DPIA, data processing agreements |
+| **FERPA** | **Partial** — direct PII removed, IDs hashed | “Reasonable determination” for small cohorts |
+| **HIPAA Safe Harbor** | **Not directly applicable** | Relevant only for health science data |
+
+## What the MCP Server Does Automatically
+
+When using brightspaceR through the MCP server (Claude Desktop, Claude
+Code), all privacy protections are applied automatically in
+`get_cached_dataset()`:
+
+1.  **PII field policy** (`apply_field_policy()`) — Drops or redacts
+    columns per a YAML-driven policy. Default policy suppresses names,
+    emails, comments, and other direct identifiers from Users, Grade
+    Results, Assignment Submissions, and Quiz User Answers.
+
+2.  **ID pseudonymisation** (`pseudonymise_df()`) — HMAC-hashes all
+    person-referencing ID columns (UserId, SubmitterId, LastModifiedBy,
+    etc.) across 14 datasets. Structural IDs (OrgUnitId, GradeObjectId)
+    are left untouched.
+
+3.  **Audit logging** (`audit_log()`) — Records every data access for
+    post-hoc review.
+
+4.  **AST code inspection** (`check_code_safety()`) — Prevents the AI
+    model from executing code that could bypass protections.
+
+See
+[`vignette("mcp-server-design")`](https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-server-design.md)
+for implementation details.
+
+## Applying Privacy Protections in R Scripts
+
+The MCP server’s protections are automatic, but regular R scripts using
+[`bs_get_dataset()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_dataset.md)
+directly receive **raw, unprotected data**. If your analysis will be
+shared, included in reports, or processed by AI tools, you should apply
+equivalent protections.
+
+brightspaceR exports three functions that apply the same protections as
+the MCP server. They are opt-in tools for use in your own pipelines.
+
+### Step 1: Suppress direct identifiers
+
+Use
+[`bs_apply_field_policy()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_apply_field_policy.md)
+to apply the bundled field policy (which drops names, emails, and
+free-text comments). You can also pass a custom policy.
+
+``` r
+
+library(brightspaceR)
+library(dplyr)
+
+users <- bs_get_dataset("Users") %>%
+  bs_apply_field_policy("Users")
+
+grades <- bs_get_dataset("Grade Results") %>%
+  bs_apply_field_policy("Grade Results")
+```
+
+Or select columns manually if you prefer explicit control:
+
+``` r
+
+users <- bs_get_dataset("Users") %>%
+  select(-any_of(c(
+    "UserName", "FirstName", "MiddleName", "LastName",
+    "ExternalEmail", "OrgDefinedId"
+  )))
+```
+
+### Step 2: Pseudonymise person-referencing IDs
+
+Use
+[`bs_pseudonymise_df()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_pseudonymise_df.md)
+to pseudonymise all person-referencing columns for a known dataset, or
+[`bs_pseudonymise_id()`](https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_pseudonymise_id.md)
+for individual columns. Generate a key once per analysis session;
+discard it when done.
+
+``` r
+
+library(openssl)
+
+# Generate a session key — do NOT save this to disk
+session_key <- rand_bytes(32)
+
+# Pseudonymise all known person-ID columns for the dataset
+users <- users %>% bs_pseudonymise_df("Users", key = session_key)
+grades <- grades %>% bs_pseudonymise_df("Grade Results", key = session_key)
+```
+
+Or apply column-by-column in a dplyr pipeline:
+
+``` r
+
+users <- bs_get_dataset("Users") %>%
+  select(-any_of(c("FirstName", "LastName", "ExternalEmail"))) %>%
+  mutate(UserId = bs_pseudonymise_id(UserId, key = session_key))
+```
+
+Because the same key is used, `UserId = 42` in `users` maps to the same
+pseudonym as `UserId = 42` in `grades`, so joins still work:
+
+``` r
+
+# This join works because pseudonyms are deterministic within the session
+users %>%
+  inner_join(grades, by = "UserId") %>%
+  group_by(UserId) %>%
+  summarise(mean_grade = mean(PointsNumerator, na.rm = TRUE))
+```
+
+### Step 3: Apply minimum cell sizes (for FERPA compliance)
+
+When publishing or sharing aggregated results, suppress groups with
+fewer than 5 individuals to prevent indirect identification:
+
+``` r
+
+course_grades <- grades %>%
+  group_by(OrgUnitId) %>%
+  summarise(
+    n_students = n_distinct(UserId),
+    mean_grade = mean(PointsNumerator, na.rm = TRUE)
+  ) %>%
+  # FERPA: suppress small cohorts
+
+  mutate(
+    mean_grade = if_else(n_students < 5, NA_real_, mean_grade),
+    n_students = if_else(n_students < 5, NA_integer_, n_students)
+  )
+```
+
+### Step 4: Generalise dates (optional, for stronger de-identification)
+
+If your analysis doesn’t need precise timestamps, reduce date precision
+to reduce re-identification risk:
+
+``` r
+
+library(lubridate)
+
+users <- users %>%
+  mutate(
+    # Round to month — hides exact login dates
+    LastAccessed = floor_date(LastAccessed, "month"),
+    SignupDate = floor_date(SignupDate, "month")
+  )
+```
+
+### Step 5: Audit trail
+
+If your institution requires audit logging, wrap data access in a
+logging function:
+
+``` r
+
+audit_log_path <- "analysis_audit.jsonl"
+
+log_data_access <- function(dataset_name, n_rows, n_cols) {
+  entry <- jsonlite::toJSON(list(
+    timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3Z", tz = "UTC"),
+    dataset = dataset_name,
+    rows = n_rows,
+    cols = n_cols,
+    user = Sys.info()[["user"]]
+  ), auto_unbox = TRUE)
+  cat(as.character(entry), "\n", sep = "",
+      file = audit_log_path, append = TRUE)
+}
+
+# Use after loading each dataset
+users <- bs_get_dataset("Users")
+log_data_access("Users", nrow(users), ncol(users))
+```
+
+## Complete Example: FERPA-Aligned Analysis Script
+
+This example combines all techniques into a complete workflow:
+
+``` r
+
+library(brightspaceR)
+library(dplyr)
+library(openssl)
+
+# ── 1. Session key (ephemeral) ────────────────────────────────────────────
+session_key <- rand_bytes(32)
+
+# ── 2. Load and de-identify ──────────────────────────────────────────────
+users <- bs_get_dataset("Users") %>%
+  bs_apply_field_policy("Users") %>%
+  bs_pseudonymise_df("Users", key = session_key)
+
+grades <- bs_get_dataset("Grade Results") %>%
+  bs_apply_field_policy("Grade Results") %>%
+  bs_pseudonymise_df("Grade Results", key = session_key)
+
+# ── 3. Analyse with pseudonymised data ───────────────────────────────────
+course_performance <- grades %>%
+  group_by(OrgUnitId) %>%
+  summarise(
+    n_students = n_distinct(UserId),
+    mean_grade = mean(PointsNumerator, na.rm = TRUE),
+    median_grade = median(PointsNumerator, na.rm = TRUE)
+  ) %>%
+  # Suppress small cohorts (FERPA)
+  filter(n_students >= 5)
+
+# ── 4. Output is safe to share ───────────────────────────────────────────
+# - No names or emails (field policy)
+# - Person IDs are pseudonymised (HMAC-SHA256)
+# - Small cohorts suppressed (FERPA)
+# - Structural IDs (OrgUnitId) retained for context
+course_performance
+```
+
+## Key Principles
+
+1.  **Defence in depth** — No single technique is sufficient. Combine
+    suppression (remove direct identifiers), pseudonymisation (hash
+    indirect identifiers), and aggregation (minimum cell sizes) for
+    meaningful privacy protection.
+
+2.  **Key management** — Never write the pseudonymisation key to disk.
+    Generate it at the start of an analysis session and let it die with
+    the R process. If you need reproducible pseudonyms across sessions,
+    use a securely stored key (e.g., via `keyring` or environment
+    variable) and treat it as a secret with the same care as an API key.
+
+3.  **Pseudonymisation is not anonymisation** — Under GDPR,
+    pseudonymised data is still personal data. Under FERPA,
+    pseudonymised records are still education records unless the
+    institution makes a “reasonable determination” that students cannot
+    be identified. Pseudonymisation reduces risk; it does not eliminate
+    legal obligations.
+
+4.  **Context matters** — A course with 200 students is harder to
+    de-anonymise than one with 3. Apply stronger measures (larger
+    minimum cell sizes, fewer quasi-identifiers) when working with small
+    populations.
+
+5.  **Document your decisions** — For formal compliance, maintain a
+    record of which de-identification techniques were applied, which
+    standards were considered, and what residual risks remain. The audit
+    log (MCP server) or manual logging (scripts) supports this.
+
+## Further Reading
+
+- [ENISA: Pseudonymisation Techniques and Best
+  Practices](https://www.enisa.europa.eu/publications/deploying-pseudonymisation-techniques)
+- [ENISA: Data Pseudonymisation — Advanced Techniques and Use
+  Cases](https://www.enisa.europa.eu/publications/data-pseudonymisation-advanced-techniques-and-use-cases)
+- [NIST SP 800-188: De-Identifying Government
+  Datasets](https://csrc.nist.gov/pubs/sp/800/188/final)
+- [NIST IR 8053: De-Identification of Personal
+  Information](https://nvlpubs.nist.gov/nistpubs/ir/2015/nist.ir.8053.pdf)
+- [ISO 25237:2017: Health Informatics —
+  Pseudonymization](https://www.iso.org/standard/63553.html)
+- [EDPB Guidelines 01/2025 on
+  Pseudonymisation](https://www.edpb.europa.eu/our-work-tools/documents/public-consultations/2025/guidelines-012025-pseudonymisation_en)
+- [US Dept. of Education: Data De-identification
+  Overview](https://studentprivacy.ed.gov/resources/data-de-identification-overview-basic-terms)
+- [Future of Privacy Forum: Student Data and
+  De-Identification](https://fpf.org/blog/student-data-and-de-identification/)
+- [HHS: HIPAA De-Identification
+  Guidance](https://www.hhs.gov/hipaa/for-professionals/special-topics/de-identification/index.html)

@@ -15,8 +15,10 @@ A tibble with columns: `dataset_id`, `name`, `description`, `category`.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 ads <- bs_list_ads()
 ads
-} # }
+}
+# }
 ```

@@ -43,10 +43,12 @@ specified course type.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 enroll <- bs_get_dataset("Enrollments and Withdrawals")
 org_units <- bs_get_dataset("Org Units")
 users <- bs_get_dataset("Users")
 enriched <- bs_enrich_enrollments(enroll, org_units, users)
-} # }
+}
+# }
 ```

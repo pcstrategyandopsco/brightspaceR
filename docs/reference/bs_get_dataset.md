@@ -27,8 +27,10 @@ A tibble of the dataset contents.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 users <- bs_get_dataset("Users")
 grades <- bs_get_dataset("Grade Results")
-} # }
+}
+# }
 ```

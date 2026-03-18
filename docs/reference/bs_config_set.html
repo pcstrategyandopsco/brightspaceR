@@ -55,7 +55,10 @@ is updated while preserving other settings.</p>
 <span>  <span class="va">client_secret</span>,</span>
 <span>  <span class="va">instance_url</span>,</span>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://localhost:1410/"</span>,</span>
-<span>  scope <span class="op">=</span> <span class="st">"datahub:dataexports:*"</span>,</span>
+<span>  scope <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"datasets:bds:read"</span>, <span class="st">"datahub:dataexports:read"</span>,</span>
+<span>    <span class="st">"datahub:dataexports:download"</span>, <span class="st">"reporting:dataset:list"</span>, <span class="st">"reporting:dataset:fetch"</span>,</span>
+<span>    <span class="st">"reporting:job:create"</span>, <span class="st">"reporting:job:list"</span>, <span class="st">"reporting:job:fetch"</span>,</span>
+<span>    <span class="st">"reporting:job:download"</span>, <span class="st">"users:profile:read"</span><span class="op">)</span>,</span>
 <span>  file <span class="op">=</span> <span class="st">"config.yml"</span>,</span>
 <span>  profile <span class="op">=</span> <span class="st">"default"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -83,7 +86,8 @@ is updated while preserving other settings.</p>
 
 
 <dt id="arg-scope">scope<a class="anchor" aria-label="anchor" href="#arg-scope"></a></dt>
-<dd><p>OAuth2 scope. Defaults to <code>"datahub:dataexports:*"</code>.</p></dd>
+<dd><p>OAuth2 scope string (space-separated). Defaults to the full
+BDS + ADS scope set used by <code><a href="bs_auth.html">bs_auth()</a></code>.</p></dd>
 
 
 <dt id="arg-file">file<a class="anchor" aria-label="anchor" href="#arg-file"></a></dt>
@@ -101,13 +105,15 @@ is updated while preserving other settings.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="bs_has_token.html">bs_has_token</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span><span class="fu">bs_config_set</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  client_id <span class="op">=</span> <span class="st">"my-client-id"</span>,</span></span>
 <span class="r-in"><span>  client_secret <span class="op">=</span> <span class="st">"my-secret"</span>,</span></span>
 <span class="r-in"><span>  instance_url <span class="op">=</span> <span class="st">"https://myschool.brightspace.com"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

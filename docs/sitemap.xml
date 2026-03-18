@@ -1,5 +1,6 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/404.html</loc></url>
+<url><loc>https://pcstrategyandopsco.github.io/brightspaceR/CLAUDE.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/LICENSE-text.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/LICENSE.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/articles/convenience-functions.html</loc></url>
@@ -9,17 +10,23 @@
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-server-design.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-setup.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-test-script.html</loc></url>
+<url><loc>https://pcstrategyandopsco.github.io/brightspaceR/articles/privacy-compliance.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/articles/setup.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/articles/shiny-app.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/authors.html</loc></url>
+<url><loc>https://pcstrategyandopsco.github.io/brightspaceR/brightspaceR_mcp_security_prompt.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/index.html</loc></url>
+<url><loc>https://pcstrategyandopsco.github.io/brightspaceR/news/index.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/ads_status_text.html</loc></url>
+<url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/align_col_types.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/brightspaceR-package.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_ads_filter.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_ads_job_status.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_ads_path.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_ads_schemas.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_api_version.html</loc></url>
+<url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_apply_diffs.html</loc></url>
+<url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_apply_field_policy.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_apply_schema_transforms.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_assessment_performance.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_assignment_completion.html</loc></url>
@@ -41,6 +48,7 @@
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_course_summary.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_create_ads_job.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_deauth.html</loc></url>
+<url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_diff_manifest.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_download.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_download_ads.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_download_all.html</loc></url>
@@ -54,6 +62,7 @@
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_ads.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_ads_schema.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_dataset.html</loc></url>
+<url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_dataset_current.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_schema.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_get_timezone.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_grade_summary.html</loc></url>
@@ -81,6 +90,8 @@
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_parse_csv.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_pkce_challenge.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_post.html</loc></url>
+<url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_pseudonymise_df.html</loc></url>
+<url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_pseudonymise_id.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_random_string.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_read_auth_response.html</loc></url>
 <url><loc>https://pcstrategyandopsco.github.io/brightspaceR/reference/bs_refresh_token.html</loc></url>

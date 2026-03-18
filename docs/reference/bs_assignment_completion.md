@@ -22,8 +22,10 @@ A summarised tibble with one row per assignment per org unit.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 submissions <- bs_get_dataset("Assignment Submissions")
 bs_assignment_completion(submissions)
-} # }
+}
+# }
 ```

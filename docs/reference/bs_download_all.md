@@ -22,9 +22,11 @@ A named list of tibbles.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+# \donttest{
+if (bs_has_token()) {
 all_data <- bs_download_all()
 all_data$users
 all_data$org_units
-} # }
+}
+# }
 ```

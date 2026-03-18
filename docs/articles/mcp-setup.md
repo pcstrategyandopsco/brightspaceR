@@ -44,13 +44,14 @@ Before setting up the MCP server, make sure you have:
     #> [1] TRUE
     ```
 
-4.  **R packages** – the server loads `jsonlite` and `stringr` directly,
-    plus `dplyr`, `tidyr`, `ggplot2`, `lubridate`, and `scales` into the
-    persistent workspace. Install any that are missing:
+4.  **R packages** – the server loads `jsonlite`, `stringr`, and `yaml`
+    directly, plus `dplyr`, `tidyr`, `ggplot2`, `lubridate`, and
+    `scales` into the persistent workspace. Install any that are
+    missing:
 
     ``` r
 
-    install.packages(c("jsonlite", "stringr", "dplyr", "tidyr",
+    install.packages(c("jsonlite", "stringr", "yaml", "dplyr", "tidyr",
                         "ggplot2", "lubridate", "scales"))
     ```
 
@@ -84,7 +85,7 @@ Use the full absolute path in the configuration below.
 
 ## Claude Desktop setup
 
-[Claude Desktop](https://claude.ai/download) uses a JSON configuration
+[Claude Desktop](https://claude.com/download) uses a JSON configuration
 file to register MCP servers.
 
 ### Step 1: Find your config file
@@ -157,8 +158,8 @@ in an interactive R session and restart Claude Desktop.
 
 ## Claude Code (CLI) setup
 
-[Claude Code](https://docs.anthropic.com/en/docs/claude-code) reads MCP
-server configuration from `~/.claude.json` (global) or from
+[Claude Code](https://platform.claude.com/docs/en/docs/claude-code)
+reads MCP server configuration from `~/.claude.json` (global) or from
 project-level `.mcp.json` files.
 
 ### Option A: Global configuration (~/.claude.json)
@@ -219,6 +220,7 @@ configuration:
 |----|----|----|
 | `BRIGHTSPACER_PKG_DIR` | Path to brightspaceR package root (overrides auto-detection) | Auto-detected from `server.R` location |
 | `BRIGHTSPACER_OUTPUT_DIR` | Directory for Chart.js HTML and PNG output files | `<pkg_root>/brightspaceR_output` or `<cwd>/brightspaceR_output` |
+| `BRIGHTSPACER_FIELD_POLICY` | Path to a custom PII field policy YAML file | Bundled `inst/mcp/field_policy.yml` |
 | `R_CONFIG_ACTIVE` | Config profile to use from `config.yml` (e.g., `"production"`) | `"default"` |
 
 Set these in your MCP server configuration if needed:
@@ -251,11 +253,18 @@ Once connected, the assistant has access to 7 tools:
 | `describe_dataset` | Get column names, types, and distribution statistics for a dataset |
 | `list_schemas` | List datasets with known column type schemas |
 | `get_data_summary` | Quick filtered/grouped statistics without writing R code |
-| `execute_r` | Execute arbitrary R code in a persistent workspace with brightspaceR, dplyr, ggplot2, and more pre-loaded |
+| `execute_r` | Execute R code in a persistent workspace with dplyr, ggplot2, and more pre-loaded. Code is safety-checked before execution; PII columns are filtered by policy. |
 
 The `execute_r` tool is the most powerful – it lets the assistant write
-and run any R analysis, from simple filtering to complex multi-dataset
-joins and interactive Chart.js visualisations.
+and run R analysis, from simple filtering to complex multi-dataset joins
+and interactive Chart.js visualisations. Code is inspected before
+execution to block dangerous constructs (shell commands, file I/O,
+direct API access), and datasets are filtered through a PII field policy
+that strips sensitive columns like names and emails before they reach
+the workspace.
+
+Use `write_chart(html, 'name.html')` to save Chart.js HTML output safely
+to the output directory.
 
 ## Example conversation
 
@@ -283,6 +292,42 @@ See
 for architecture details, and
 [`vignette("mcp-test-script")`](https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-test-script.md)
 for a full set of test prompts to verify your setup.
+
+## Security
+
+The MCP server includes four security layers enabled by default:
+
+**AST code inspection** – R code submitted via `execute_r` is parsed and
+checked before execution. Dangerous constructs are blocked: direct
+package access (`brightspaceR::`, `httr::`, `curl::`, etc.),
+metaprogramming (`eval`, `do.call`, `get`), shell commands (`system`,
+`system2`), file I/O (`readLines`, `writeLines`, etc.), and network
+functions (`download.file`, `url`). Use `write_chart()` for Chart.js
+HTML output.
+
+**PII field policy** – A YAML policy file controls which columns are
+visible per dataset. The default policy (`inst/mcp/field_policy.yml`)
+hides PII columns like names, emails, and free-text comments from
+datasets like Users and Grade Results. Override with a custom policy via
+`BRIGHTSPACER_FIELD_POLICY`.
+
+**ID pseudonymisation** – All person-referencing ID columns (UserId,
+SubmitterId, LastModifiedBy, etc.) are HMAC-hashed with a session-scoped
+key. The AI model sees deterministic pseudonyms like `usr_a3f2b1c8`
+instead of raw integers. Combined with the field policy, this means no
+names, no emails, and no reversible IDs reach the model.
+
+**Audit logging** – Every tool call is recorded in `mcp_audit.jsonl` in
+the output directory. Entries include timestamp, tool name, arguments,
+response size, and whether code was blocked.
+
+See
+[`vignette("mcp-server-design")`](https://pcstrategyandopsco.github.io/brightspaceR/articles/mcp-server-design.md)
+for implementation details and
+[`vignette("privacy-compliance")`](https://pcstrategyandopsco.github.io/brightspaceR/articles/privacy-compliance.md)
+for a full assessment against ENISA, NIST, ISO 25237, GDPR, and FERPA
+standards — including how to apply the same protections in regular R
+scripts.
 
 ## Troubleshooting
 
