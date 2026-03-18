@@ -261,6 +261,14 @@ cat <output_dir>/mcp_audit.jsonl | head -5
 
 Each line is a JSON object with timestamp, tool name, arguments, and status fields.
 
+## Test 23: ID pseudonymisation — UserId is hashed
+
+**Prompt:**
+
+> Run this R code: `bs_get_dataset("Users") %>% select(UserId) %>% head(5)`
+
+**Expected:** The UserId column should contain pseudonymised values like `usr_a3f2b1c8`, not raw integers. Every value should start with `usr_` followed by 8 hex characters. This confirms that person-referencing IDs are hashed before reaching the workspace.
+
 ## Troubleshooting
 
 **Server won't start:**

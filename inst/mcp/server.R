@@ -141,7 +141,10 @@ SERVER_INSTRUCTIONS <- paste0(
   "Code is inspected before execution. Blocked: direct API access (brightspaceR::,\n",
   "httr::, curl::), file I/O (readLines, writeLines, readRDS, etc.), shell commands\n",
   "(system, system2), network functions (download.file, url), and metaprogramming\n",
-  "(eval, do.call, get). Use write_chart() for HTML output. Use bs_get_dataset() for data."
+  "(eval, do.call, get). Use write_chart() for HTML output. Use bs_get_dataset() for data.\n\n",
+  "Person-referencing IDs (UserId, SubmitterId, etc.) are pseudonymised — you will\n",
+  "see values like usr_a3f2b1c8 instead of raw integers. These are consistent\n",
+  "within a session, so joins and grouping work normally."
 )
 
 # ── 3. Tool Definitions ─────────────────────────────────────────────────────
@@ -323,7 +326,56 @@ apply_field_policy <- function(df, dataset_name) {
   df
 }
 
-# ── 5. Dataset Cache ────────────────────────────────────────────────────────
+# ── 5. ID Pseudonymisation ─────────────────────────────────────────────────
+
+# Person-referencing ID columns per dataset — these get HMAC-hashed so the
+# AI model sees deterministic pseudonyms (usr_a3f2b1c8) instead of raw integers.
+# Structural IDs (OrgUnitId, GradeObjectId, etc.) are left untouched.
+PERSON_ID_COLUMNS <- list(
+  "Users"                        = c("UserId"),
+  "User Enrollments"             = c("UserId"),
+  "Grade Results"                = c("UserId", "LastModifiedBy"),
+  "Assignment Submissions"       = c("SubmitterId", "FeedbackUserId"),
+  "Quiz User Answers"            = c("LastModifiedBy"),
+  "Content User Progress"        = c("UserId"),
+  "Quiz Attempts"                = c("UserId"),
+  "Discussion Posts"             = c("UserId"),
+  "Discussion Topics"            = c("LastPostUserId", "DeletedByUserId"),
+  "Content Objects"              = c("CreatedBy", "LastModifiedBy", "DeletedBy"),
+  "Grade Objects"                = c("DeletedByUserId"),
+  "Enrollments and Withdrawals"  = c("UserId", "ModifiedByUserId"),
+  "Final Grades"                 = c("UserId"),
+  "Attendance Records"           = c("UserId")
+)
+
+# Session-scoped key — generated once at startup, dies with the process
+.pseudonym_key <- openssl::rand_bytes(32)
+
+pseudonymise_id <- function(values, key = .pseudonym_key) {
+  result <- rep(NA_character_, length(values))
+  non_na <- !is.na(values)
+  if (any(non_na)) {
+    hashes <- vapply(as.character(values[non_na]), function(v) {
+      raw_hash <- openssl::sha256(charToRaw(v), key = key)
+      paste0("usr_", substr(as.character(raw_hash), 1, 8))
+    }, character(1), USE.NAMES = FALSE)
+    result[non_na] <- hashes
+  }
+  result
+}
+
+pseudonymise_df <- function(df, dataset_name) {
+  cols <- PERSON_ID_COLUMNS[[dataset_name]]
+  if (is.null(cols)) return(df)
+  for (col in cols) {
+    if (col %in% names(df)) {
+      df[[col]] <- pseudonymise_id(df[[col]])
+    }
+  }
+  df
+}
+
+# ── 6. Dataset Cache ────────────────────────────────────────────────────────
 
 .cache <- new.env(parent = emptyenv())
 .cache$datasets <- new.env(parent = emptyenv())
@@ -358,13 +410,14 @@ get_cached_dataset <- function(name) {
     return(get(key, envir = .cache$datasets))
   }
   ds <- suppressMessages(bs_get_dataset(name))
-  # Apply PII field policy before caching
+  # Apply PII field policy then pseudonymise person IDs before caching
   ds <- apply_field_policy(ds, name)
+  ds <- pseudonymise_df(ds, name)
   assign(key, ds, envir = .cache$datasets)
   ds
 }
 
-# ── 5. JSON & Response Helpers ────────────────────────────────────────────────
+# ── 7. JSON & Response Helpers ────────────────────────────────────────────────
 
 to_json <- function(x) {
   jsonlite::toJSON(x, auto_unbox = TRUE, POSIXt = "ISO8601", null = "null",
@@ -480,7 +533,7 @@ make_result <- function(content, is_error = FALSE) {
   mcp_result(content, is_error = is_error)
 }
 
-# ── 6. AST Code Inspection ───────────────────────────────────────────────────
+# ── 8. AST Code Inspection ───────────────────────────────────────────────────
 
 BLOCKED_PACKAGES <- c("brightspaceR", "httr", "httr2", "curl", "jsonlite", "config")
 
@@ -555,7 +608,7 @@ check_code_safety <- function(code) {
   }
 }
 
-# ── 7. Persistent Workspace ──────────────────────────────────────────────────
+# ── 9. Persistent Workspace ──────────────────────────────────────────────────
 
 .mcp_workspace <- new.env(parent = globalenv())
 
@@ -615,7 +668,7 @@ local({
   result
 }
 
-# ── 7. Column Summary Helper ─────────────────────────────────────────────────
+# ── 10. Column Summary Helper ────────────────────────────────────────────────
 
 summarize_column <- function(x, col_name) {
   n_missing <- sum(is.na(x))
@@ -655,7 +708,7 @@ summarize_column <- function(x, col_name) {
   info
 }
 
-# ── 8. Tool Handlers ────────────────────────────────────────────────────────
+# ── 11. Tool Handlers ───────────────────────────────────────────────────────
 
 handle_list_datasets <- function(args) {
   listing <- get_cached_listing()
@@ -1016,7 +1069,7 @@ tool_handlers <- list(
   list_schemas = handle_list_schemas
 )
 
-# ── 9. Audit Logging ─────────────────────────────────────────────────────────
+# ── 12. Audit Logging ────────────────────────────────────────────────────────
 
 AUDIT_LOG_PATH <- file.path(MCP_OUTPUT_DIR, "mcp_audit.jsonl")
 
@@ -1061,7 +1114,7 @@ audit_log <- function(tool, arguments = NULL, response_bytes = 0L,
   )
 }
 
-# ── 10. JSON-RPC Dispatch ───────────────────────────────────────────────────
+# ── 13. JSON-RPC Dispatch ──────────────────────────────────────────────────
 
 handle_request <- function(request) {
   method <- request$method
@@ -1163,7 +1216,7 @@ handle_request <- function(request) {
   )
 }
 
-# ── 10. Auth on Startup ──────────────────────────────────────────────────────
+# ── 14. Auth on Startup ─────────────────────────────────────────────────────
 
 # bs_config() looks for config.yml in the working directory, but when Claude
 # Code launches this server the cwd may be anywhere. Temporarily switch to the
@@ -1184,7 +1237,7 @@ tryCatch(
   }
 )
 
-# ── 11. Main Loop ────────────────────────────────────────────────────────────
+# ── 15. Main Loop ───────────────────────────────────────────────────────────
 
 mcp_log("Server started. Listening on stdin...")
 audit_log("session_start")

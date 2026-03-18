@@ -1,5 +1,21 @@
 # brightspaceR 0.1.0.9000
 
+## MCP Server Security (Phase 2)
+
+* **ID pseudonymisation**: All person-referencing ID columns (UserId,
+  SubmitterId, LastModifiedBy, etc.) are hashed with a session-scoped
+  HMAC-SHA256 key. The AI model sees deterministic pseudonyms like
+  `usr_a3f2b1c8` instead of raw integers. Consistent within a session
+  (joins and grouping work), unrecoverable across sessions. Combined
+  with Phase 1's field policy (which drops names and emails), this
+  achieves full pseudonymisation.
+* **Privacy compliance vignette**: New `vignette("privacy-compliance")`
+  documents alignment with ENISA, NIST SP 800-188, NIST IR 8053,
+  ISO 25237:2017, GDPR/EDPB Guidelines 01/2025, FERPA, and HIPAA Safe
+  Harbor. Includes compliance summary table with degree of compliance and
+  organisational gaps. Provides complete worked examples for applying the
+  same protections in regular R scripts outside the MCP server.
+
 ## MCP Server Security (Phase 1)
 
 * **AST code inspection**: `execute_r` now parses submitted R code and rejects

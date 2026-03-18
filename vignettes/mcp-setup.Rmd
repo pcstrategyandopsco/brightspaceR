@@ -291,7 +291,7 @@ your setup.
 
 ## Security
 
-The MCP server includes three security layers enabled by default:
+The MCP server includes four security layers enabled by default:
 
 **AST code inspection** -- R code submitted via `execute_r` is parsed and
 checked before execution. Dangerous constructs are blocked: direct package
@@ -305,11 +305,20 @@ per dataset. The default policy (`inst/mcp/field_policy.yml`) hides PII
 columns like names, emails, and free-text comments from datasets like Users
 and Grade Results. Override with a custom policy via `BRIGHTSPACER_FIELD_POLICY`.
 
+**ID pseudonymisation** -- All person-referencing ID columns (UserId,
+SubmitterId, LastModifiedBy, etc.) are HMAC-hashed with a session-scoped key.
+The AI model sees deterministic pseudonyms like `usr_a3f2b1c8` instead of raw
+integers. Combined with the field policy, this means no names, no emails, and
+no reversible IDs reach the model.
+
 **Audit logging** -- Every tool call is recorded in `mcp_audit.jsonl` in the
 output directory. Entries include timestamp, tool name, arguments, response
 size, and whether code was blocked.
 
-See `vignette("mcp-server-design")` for full details on each layer.
+See `vignette("mcp-server-design")` for implementation details and
+`vignette("privacy-compliance")` for a full assessment against ENISA, NIST,
+ISO 25237, GDPR, and FERPA standards — including how to apply the same
+protections in regular R scripts.
 
 ## Troubleshooting
 

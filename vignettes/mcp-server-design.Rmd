@@ -430,6 +430,81 @@ before caching. This means all downstream consumers -- `describe_dataset`,
 filtered columns. There is no way for code running in the workspace to access
 columns removed by the policy.
 
+## ID Pseudonymisation
+
+Even after the PII field policy strips names and emails, person-referencing ID
+columns (UserId, SubmitterId, LastModifiedBy, etc.) still contain raw integers
+that could be reversed to real people by anyone with Brightspace admin access.
+The pseudonymisation layer addresses this by HMAC-hashing all person IDs with a
+session-scoped key.
+
+### How it works
+
+At server startup, a 32-byte random key is generated via
+`openssl::rand_bytes(32)` and stored in a module-level variable. Each person ID
+value is hashed with HMAC-SHA256 (`openssl::sha256()`), truncated to the first
+8 hex characters, and prefixed with `usr_`. For example, UserId `12345` becomes
+`usr_a3f2b1c8`.
+
+- **Deterministic within a session**: the same ID always maps to the same
+  pseudonym, so joins, grouping, and cross-dataset references work normally.
+- **Unrecoverable across sessions**: when the server restarts, a new key is
+  generated and all pseudonyms change. There is no stored mapping to reverse.
+- **NA passthrough**: `NA` values remain `NA`.
+
+### Which columns are hashed
+
+A hardcoded registry maps dataset names to their person-referencing ID columns.
+Only person IDs are hashed — structural IDs (OrgUnitId, GradeObjectId,
+ContentObjectId, etc.) are left untouched so the AI can still join and filter on
+them.
+
+| Dataset | Pseudonymised columns |
+|---|---|
+| Users | UserId |
+| User Enrollments | UserId |
+| Grade Results | UserId, LastModifiedBy |
+| Assignment Submissions | SubmitterId, FeedbackUserId |
+| Quiz User Answers | LastModifiedBy |
+| Content User Progress | UserId |
+| Quiz Attempts | UserId |
+| Discussion Posts | UserId |
+| Discussion Topics | LastPostUserId, DeletedByUserId |
+| Content Objects | CreatedBy, LastModifiedBy, DeletedBy |
+| Grade Objects | DeletedByUserId |
+| Enrollments and Withdrawals | UserId, ModifiedByUserId |
+| Final Grades | UserId |
+| Attendance Records | UserId |
+
+Some of these columns may already be dropped by the field policy (e.g.,
+FeedbackUserId in Assignment Submissions). The pseudonymisation function silently
+skips columns not present in the data frame.
+
+### Where it runs
+
+`pseudonymise_df()` runs inside `get_cached_dataset()`, after
+`apply_field_policy()` and before caching. This means all downstream consumers
+— `describe_dataset`, `get_data_summary`, and `execute_r` via `bs_get_dataset()`
+— see only pseudonymised IDs. The pseudonymisation is baked into the cache, so
+it is applied once per dataset per session.
+
+### Combined effect with field policy
+
+Together, the PII field policy and ID pseudonymisation achieve full
+pseudonymisation:
+
+1. **Field policy** drops direct identifiers: FirstName, LastName, Email,
+   UserName, OrgDefinedId, free-text comments
+2. **Pseudonymisation** hashes indirect identifiers: UserId, SubmitterId,
+   LastModifiedBy, etc.
+
+The AI model cannot see who a person is (no names/emails) or reverse-engineer
+their identity from an ID (hashed with a session-scoped key).
+
+For a detailed assessment of how these protections align with ENISA, NIST,
+ISO 25237, GDPR, FERPA, and HIPAA standards — and how to apply the same
+techniques in your own R scripts — see `vignette("privacy-compliance")`.
+
 ## Audit Logging
 
 Every tool call is recorded in an append-only JSONL file at
@@ -474,11 +549,13 @@ and code misuse:
    commands, file I/O, metaprogramming) before code executes
 2. **PII field policy** strips sensitive columns (names, emails, comments)
    before data enters the workspace
-3. **Audit logging** records every tool call, blocked attempt, and error for
+3. **ID pseudonymisation** HMAC-hashes all person-referencing ID columns with a
+   session-scoped key, so the AI sees `usr_a3f2b1c8` instead of raw integers
+4. **Audit logging** records every tool call, blocked attempt, and error for
    post-hoc review
-4. **Execution timeout** (30 seconds) prevents runaway queries
-5. **Size guard** (~800KB) truncates oversized responses
-6. **Row-count warnings** help the model self-correct on large datasets
+5. **Execution timeout** (30 seconds) prevents runaway queries
+6. **Size guard** (~800KB) truncates oversized responses
+7. **Row-count warnings** help the model self-correct on large datasets
 
 For production deployments where multiple users share a server, `execute_r`
 would need process-level isolation (e.g., callr). That's out of scope for the
