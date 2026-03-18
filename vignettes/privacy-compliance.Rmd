@@ -219,61 +219,41 @@ See `vignette("mcp-server-design")` for implementation details.
 The MCP server's protections are automatic, but regular R scripts using
 `bs_get_dataset()` directly receive **raw, unprotected data**. If your
 analysis will be shared, included in reports, or processed by AI tools, you
-should apply equivalent protections manually.
+should apply equivalent protections.
+
+brightspaceR exports three functions that apply the same protections as the
+MCP server. They are opt-in tools for use in your own pipelines.
 
 ### Step 1: Suppress direct identifiers
 
-Remove columns containing names, emails, and free-text comments before any
-analysis or sharing.
+Use `bs_apply_field_policy()` to apply the bundled field policy (which drops
+names, emails, and free-text comments). You can also pass a custom policy.
 
 ```{r}
 library(brightspaceR)
 library(dplyr)
 
 users <- bs_get_dataset("Users") %>%
+  bs_apply_field_policy("Users")
+
+grades <- bs_get_dataset("Grade Results") %>%
+  bs_apply_field_policy("Grade Results")
+```
+
+Or select columns manually if you prefer explicit control:
+
+```{r}
+users <- bs_get_dataset("Users") %>%
   select(-any_of(c(
     "UserName", "FirstName", "MiddleName", "LastName",
     "ExternalEmail", "OrgDefinedId"
   )))
-
-grades <- bs_get_dataset("Grade Results") %>%
-  select(-any_of(c("Comments", "PrivateComments")))
-```
-
-You can also use the MCP server's field policy YAML to drive suppression
-programmatically:
-
-```{r}
-policy <- yaml::read_yaml(
-  system.file("mcp", "field_policy.yml", package = "brightspaceR")
-)
-
-apply_field_policy <- function(df, dataset_name, policy) {
-  ds_policy <- policy[[dataset_name]]
-  if (is.null(ds_policy)) return(df)
-
-  if (ds_policy$mode == "allow") {
-    keep <- intersect(ds_policy$fields, names(df))
-    return(df[, keep, drop = FALSE])
-  }
-
-  if (ds_policy$mode == "redact") {
-    for (col in ds_policy$fields) {
-      if (col %in% names(df)) df[[col]] <- "[REDACTED]"
-    }
-    return(df)
-  }
-
-  df
-}
-
-users <- bs_get_dataset("Users") %>%
-  apply_field_policy("Users", policy)
 ```
 
 ### Step 2: Pseudonymise person-referencing IDs
 
-Use HMAC-SHA256 to replace person IDs with deterministic pseudonyms. Generate
+Use `bs_pseudonymise_df()` to pseudonymise all person-referencing columns for
+a known dataset, or `bs_pseudonymise_id()` for individual columns. Generate
 a key once per analysis session; discard it when done.
 
 ```{r}
@@ -282,24 +262,17 @@ library(openssl)
 # Generate a session key — do NOT save this to disk
 session_key <- rand_bytes(32)
 
-pseudonymise_id <- function(values, key = session_key) {
-  result <- rep(NA_character_, length(values))
-  non_na <- !is.na(values)
-  if (any(non_na)) {
-    hashes <- vapply(as.character(values[non_na]), function(v) {
-      raw_hash <- sha256(charToRaw(v), key = key)
-      paste0("usr_", substr(as.character(raw_hash), 1, 8))
-    }, character(1), USE.NAMES = FALSE)
-    result[non_na] <- hashes
-  }
-  result
-}
+# Pseudonymise all known person-ID columns for the dataset
+users <- users %>% bs_pseudonymise_df("Users", key = session_key)
+grades <- grades %>% bs_pseudonymise_df("Grade Results", key = session_key)
+```
 
-# Apply to specific columns
-users$UserId <- pseudonymise_id(users$UserId)
+Or apply column-by-column in a dplyr pipeline:
 
-grades$UserId <- pseudonymise_id(grades$UserId)
-grades$LastModifiedBy <- pseudonymise_id(grades$LastModifiedBy)
+```{r}
+users <- bs_get_dataset("Users") %>%
+  select(-any_of(c("FirstName", "LastName", "ExternalEmail"))) %>%
+  mutate(UserId = bs_pseudonymise_id(UserId, key = session_key))
 ```
 
 Because the same key is used, `UserId = 42` in `users` maps to the same
@@ -386,31 +359,14 @@ library(openssl)
 # ── 1. Session key (ephemeral) ────────────────────────────────────────────
 session_key <- rand_bytes(32)
 
-pseudonymise_id <- function(values, key = session_key) {
-  result <- rep(NA_character_, length(values))
-  non_na <- !is.na(values)
-  if (any(non_na)) {
-    hashes <- vapply(as.character(values[non_na]), function(v) {
-      raw_hash <- sha256(charToRaw(v), key = key)
-      paste0("usr_", substr(as.character(raw_hash), 1, 8))
-    }, character(1), USE.NAMES = FALSE)
-    result[non_na] <- hashes
-  }
-  result
-}
-
 # ── 2. Load and de-identify ──────────────────────────────────────────────
 users <- bs_get_dataset("Users") %>%
-  select(-any_of(c("UserName", "FirstName", "MiddleName",
-                    "LastName", "ExternalEmail", "OrgDefinedId"))) %>%
-  mutate(UserId = pseudonymise_id(UserId))
+  bs_apply_field_policy("Users") %>%
+  bs_pseudonymise_df("Users", key = session_key)
 
 grades <- bs_get_dataset("Grade Results") %>%
-  select(-any_of(c("Comments", "PrivateComments"))) %>%
-  mutate(
-    UserId = pseudonymise_id(UserId),
-    LastModifiedBy = pseudonymise_id(LastModifiedBy)
-  )
+  bs_apply_field_policy("Grade Results") %>%
+  bs_pseudonymise_df("Grade Results", key = session_key)
 
 # ── 3. Analyse with pseudonymised data ───────────────────────────────────
 course_performance <- grades %>%
@@ -424,9 +380,9 @@ course_performance <- grades %>%
   filter(n_students >= 5)
 
 # ── 4. Output is safe to share ───────────────────────────────────────────
-# - No names or emails
-# - Person IDs are pseudonymised
-# - Small cohorts suppressed
+# - No names or emails (field policy)
+# - Person IDs are pseudonymised (HMAC-SHA256)
+# - Small cohorts suppressed (FERPA)
 # - Structural IDs (OrgUnitId) retained for context
 course_performance
 ```

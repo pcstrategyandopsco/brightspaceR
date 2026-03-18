@@ -254,6 +254,8 @@ mcp_tools <- list(
 
 # ── 4. PII Field Policy ────────────────────────────────────────────────────
 
+# Server-specific policy loader: resolves env var -> cwd -> bundled YAML,
+# then delegates to bs_apply_field_policy() from the package.
 .field_policy_cache <- new.env(parent = emptyenv())
 .field_policy_cache$policy <- NULL
 
@@ -290,90 +292,17 @@ load_field_policy <- function() {
 apply_field_policy <- function(df, dataset_name) {
   policy <- load_field_policy()
   ds_policy <- policy[[dataset_name]]
-
   if (is.null(ds_policy)) {
-    # Unknown dataset — pass through with warning
     mcp_log("Field policy: no entry for '", dataset_name, "', passing through")
-    return(df)
   }
-
-  mode <- ds_policy$mode
-  if (is.null(mode) || mode == "all") {
-    return(df)
-  }
-
-  if (mode == "allow") {
-    allowed <- ds_policy$fields
-    if (is.null(allowed)) return(df)
-    keep <- intersect(allowed, names(df))
-    return(df[, keep, drop = FALSE])
-  }
-
-  if (mode == "redact") {
-    redact_cols <- ds_policy$fields
-    if (!is.null(redact_cols)) {
-      for (col in redact_cols) {
-        if (col %in% names(df)) {
-          df[[col]] <- "[REDACTED]"
-        }
-      }
-    }
-    return(df)
-  }
-
-  # Unknown mode — pass through
-  mcp_log("Field policy: unknown mode '", mode, "' for '", dataset_name, "'")
-  df
+  bs_apply_field_policy(df, dataset_name, policy = policy)
 }
 
 # ── 5. ID Pseudonymisation ─────────────────────────────────────────────────
 
-# Person-referencing ID columns per dataset — these get HMAC-hashed so the
-# AI model sees deterministic pseudonyms (usr_a3f2b1c8) instead of raw integers.
-# Structural IDs (OrgUnitId, GradeObjectId, etc.) are left untouched.
-PERSON_ID_COLUMNS <- list(
-  "Users"                        = c("UserId"),
-  "User Enrollments"             = c("UserId"),
-  "Grade Results"                = c("UserId", "LastModifiedBy"),
-  "Assignment Submissions"       = c("SubmitterId", "FeedbackUserId"),
-  "Quiz User Answers"            = c("LastModifiedBy"),
-  "Content User Progress"        = c("UserId"),
-  "Quiz Attempts"                = c("UserId"),
-  "Discussion Posts"             = c("UserId"),
-  "Discussion Topics"            = c("LastPostUserId", "DeletedByUserId"),
-  "Content Objects"              = c("CreatedBy", "LastModifiedBy", "DeletedBy"),
-  "Grade Objects"                = c("DeletedByUserId"),
-  "Enrollments and Withdrawals"  = c("UserId", "ModifiedByUserId"),
-  "Final Grades"                 = c("UserId"),
-  "Attendance Records"           = c("UserId")
-)
-
-# Session-scoped key — generated once at startup, dies with the process
+# Session-scoped key — generated once at startup, dies with the process.
+# Passed to bs_pseudonymise_id() / bs_pseudonymise_df() from the package.
 .pseudonym_key <- openssl::rand_bytes(32)
-
-pseudonymise_id <- function(values, key = .pseudonym_key) {
-  result <- rep(NA_character_, length(values))
-  non_na <- !is.na(values)
-  if (any(non_na)) {
-    hashes <- vapply(as.character(values[non_na]), function(v) {
-      raw_hash <- openssl::sha256(charToRaw(v), key = key)
-      paste0("usr_", substr(as.character(raw_hash), 1, 8))
-    }, character(1), USE.NAMES = FALSE)
-    result[non_na] <- hashes
-  }
-  result
-}
-
-pseudonymise_df <- function(df, dataset_name) {
-  cols <- PERSON_ID_COLUMNS[[dataset_name]]
-  if (is.null(cols)) return(df)
-  for (col in cols) {
-    if (col %in% names(df)) {
-      df[[col]] <- pseudonymise_id(df[[col]])
-    }
-  }
-  df
-}
 
 # ── 6. Dataset Cache ────────────────────────────────────────────────────────
 
@@ -412,7 +341,7 @@ get_cached_dataset <- function(name) {
   ds <- suppressMessages(bs_get_dataset(name))
   # Apply PII field policy then pseudonymise person IDs before caching
   ds <- apply_field_policy(ds, name)
-  ds <- pseudonymise_df(ds, name)
+  ds <- bs_pseudonymise_df(ds, name, key = .pseudonym_key)
   assign(key, ds, envir = .cache$datasets)
   ds
 }

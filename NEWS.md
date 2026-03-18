@@ -1,5 +1,14 @@
 # brightspaceR 0.1.0.9000
 
+## Exported Privacy Functions
+
+* Exported `bs_pseudonymise_id()`, `bs_pseudonymise_df()`, and
+  `bs_apply_field_policy()` so regular R scripts can apply the same
+  privacy protections as the MCP server. These are opt-in tools for use
+  in dplyr pipelines — they do not wrap or change existing functions like
+  `bs_get_dataset()`. The MCP server now calls the package functions
+  instead of maintaining its own copies.
+
 ## MCP Server Security (Phase 2)
 
 * **ID pseudonymisation**: All person-referencing ID columns (UserId,

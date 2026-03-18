@@ -829,7 +829,7 @@ unlink(audit_test_dir, recursive = TRUE)
 
 cat("\n--- ID Pseudonymisation ---\n")
 
-# Define functions locally for testing
+# Define functions locally for testing — mirrors bs_pseudonymise_id / bs_pseudonymise_df API
 PERSON_ID_COLUMNS <- list(
   "Users"                        = c("UserId"),
   "User Enrollments"             = c("UserId"),
@@ -849,7 +849,7 @@ PERSON_ID_COLUMNS <- list(
 
 .test_pseudonym_key <- openssl::rand_bytes(32)
 
-pseudonymise_id <- function(values, key = .test_pseudonym_key) {
+pseudonymise_id <- function(values, key) {
   result <- rep(NA_character_, length(values))
   non_na <- !is.na(values)
   if (any(non_na)) {
@@ -862,69 +862,69 @@ pseudonymise_id <- function(values, key = .test_pseudonym_key) {
   result
 }
 
-pseudonymise_df <- function(df, dataset_name) {
-  cols <- PERSON_ID_COLUMNS[[dataset_name]]
+pseudonymise_df <- function(df, dataset_name, key, columns = NULL) {
+  cols <- if (!is.null(columns)) columns else PERSON_ID_COLUMNS[[dataset_name]]
   if (is.null(cols)) return(df)
   for (col in cols) {
     if (col %in% names(df)) {
-      df[[col]] <- pseudonymise_id(df[[col]])
+      df[[col]] <- pseudonymise_id(df[[col]], key = key)
     }
   }
   df
 }
 
 test("pseudonymise_id: basic — integer input produces usr_ prefixed 12-char string", {
-  result <- pseudonymise_id(12345L)
+  result <- pseudonymise_id(12345L, key = .test_pseudonym_key)
   grepl("^usr_[0-9a-f]{8}$", result) && nchar(result) == 12
 })
 
 test("pseudonymise_id: deterministic — same value + same key = same output", {
-  a <- pseudonymise_id(42L)
-  b <- pseudonymise_id(42L)
+  a <- pseudonymise_id(42L, key = .test_pseudonym_key)
+  b <- pseudonymise_id(42L, key = .test_pseudonym_key)
   identical(a, b)
 })
 
 test("pseudonymise_id: different values differ", {
-  a <- pseudonymise_id(1L)
-  b <- pseudonymise_id(2L)
+  a <- pseudonymise_id(1L, key = .test_pseudonym_key)
+  b <- pseudonymise_id(2L, key = .test_pseudonym_key)
   a != b
 })
 
 test("pseudonymise_id: NA passthrough", {
-  result <- pseudonymise_id(c(1L, NA, 3L))
+  result <- pseudonymise_id(c(1L, NA, 3L), key = .test_pseudonym_key)
   !is.na(result[1]) && is.na(result[2]) && !is.na(result[3])
 })
 
 test("pseudonymise_df: Users dataset — UserId is pseudonymised", {
   df <- data.frame(UserId = c(100L, 200L), Organization = c("Org1", "Org2"),
                    stringsAsFactors = FALSE)
-  result <- pseudonymise_df(df, "Users")
+  result <- pseudonymise_df(df, "Users", key = .test_pseudonym_key)
   all(grepl("^usr_", result$UserId)) && identical(result$Organization, df$Organization)
 })
 
 test("pseudonymise_df: structural IDs untouched — OrgUnitId stays numeric", {
   df <- data.frame(UserId = 1L, OrgUnitId = 999L, stringsAsFactors = FALSE)
-  result <- pseudonymise_df(df, "User Enrollments")
+  result <- pseudonymise_df(df, "User Enrollments", key = .test_pseudonym_key)
   grepl("^usr_", result$UserId) && is.integer(result$OrgUnitId) && result$OrgUnitId == 999L
 })
 
 test("pseudonymise_df: unknown dataset passthrough", {
   df <- data.frame(a = 1, b = 2, stringsAsFactors = FALSE)
-  result <- pseudonymise_df(df, "NonExistentDataset")
+  result <- pseudonymise_df(df, "NonExistentDataset", key = .test_pseudonym_key)
   identical(result, df)
 })
 
 test("pseudonymise_df: missing column silently skipped", {
   # Grade Results expects UserId and LastModifiedBy, but df only has UserId
   df <- data.frame(UserId = 1L, PointsNumerator = 85.0, stringsAsFactors = FALSE)
-  result <- pseudonymise_df(df, "Grade Results")
+  result <- pseudonymise_df(df, "Grade Results", key = .test_pseudonym_key)
   grepl("^usr_", result$UserId) && result$PointsNumerator == 85.0
 })
 
 test("pseudonymise_df: multiple person ID columns — Grade Results", {
   df <- data.frame(UserId = 1L, LastModifiedBy = 2L, GradeObjectId = 999L,
                    stringsAsFactors = FALSE)
-  result <- pseudonymise_df(df, "Grade Results")
+  result <- pseudonymise_df(df, "Grade Results", key = .test_pseudonym_key)
   grepl("^usr_", result$UserId) && grepl("^usr_", result$LastModifiedBy) &&
     is.integer(result$GradeObjectId) && result$GradeObjectId == 999L
 })
@@ -935,6 +935,12 @@ test("pseudonymise_id: different session keys produce different pseudonyms", {
   a <- pseudonymise_id(42L, key = key1)
   b <- pseudonymise_id(42L, key = key2)
   a != b
+})
+
+test("pseudonymise_df: custom columns override registry", {
+  df <- data.frame(MyId = 1L, OtherCol = "hello", stringsAsFactors = FALSE)
+  result <- pseudonymise_df(df, "Users", key = .test_pseudonym_key, columns = c("MyId"))
+  grepl("^usr_", result$MyId) && result$OtherCol == "hello"
 })
 
 # ── Summary ──────────────────────────────────────────────────────────────
