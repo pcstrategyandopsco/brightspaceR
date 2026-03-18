@@ -30,6 +30,9 @@ articles:
       - mcp-setup
       - mcp-server-design
       - mcp-test-script
+  - title: Privacy & Compliance
+    contents:
+      - privacy-compliance
 
 reference:
   - title: Authentication
@@ -49,6 +52,9 @@ reference:
       - bs_download_dataset
       - bs_download_all
       - bs_get_dataset
+      - bs_get_dataset_current
+      - bs_apply_diffs
+      - bs_diff_manifest
 
   - title: Joins
     desc: Convenience functions for joining related datasets.
@@ -97,6 +103,13 @@ reference:
       - bs_identify_at_risk
       - bs_retention_summary
       - bs_course_summary
+
+  - title: Privacy
+    desc: Pseudonymisation and PII field policy tools for privacy-compliant analysis.
+    contents:
+      - bs_pseudonymise_id
+      - bs_pseudonymise_df
+      - bs_apply_field_policy
 
   - title: Configuration
     desc: Package configuration options.

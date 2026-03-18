@@ -424,11 +424,13 @@ the working directory > bundled `inst/mcp/field_policy.yml`.
 
 ### Where filtering happens
 
-`apply_field_policy()` runs inside `get_cached_dataset()`, after fetching but
-before caching. This means all downstream consumers -- `describe_dataset`,
-`get_data_summary`, and `execute_r` via `bs_get_dataset()` -- see only the
-filtered columns. There is no way for code running in the workspace to access
-columns removed by the policy.
+The field policy is applied inside `get_cached_dataset()`, after fetching but
+before caching. The server delegates to `bs_apply_field_policy()` from the
+package (the same function available to regular R scripts via
+`library(brightspaceR)`). This means all downstream consumers --
+`describe_dataset`, `get_data_summary`, and `execute_r` via
+`bs_get_dataset()` -- see only the filtered columns. There is no way for code
+running in the workspace to access columns removed by the policy.
 
 ## ID Pseudonymisation
 
@@ -454,10 +456,11 @@ value is hashed with HMAC-SHA256 (`openssl::sha256()`), truncated to the first
 
 ### Which columns are hashed
 
-A hardcoded registry maps dataset names to their person-referencing ID columns.
-Only person IDs are hashed — structural IDs (OrgUnitId, GradeObjectId,
-ContentObjectId, etc.) are left untouched so the AI can still join and filter on
-them.
+A built-in registry (exported as `PERSON_ID_COLUMNS` internally, used by
+`bs_pseudonymise_df()`) maps dataset names to their person-referencing ID
+columns. Only person IDs are hashed — structural IDs (OrgUnitId,
+GradeObjectId, ContentObjectId, etc.) are left untouched so the AI can still
+join and filter on them.
 
 | Dataset | Pseudonymised columns |
 |---|---|
@@ -482,11 +485,13 @@ skips columns not present in the data frame.
 
 ### Where it runs
 
-`pseudonymise_df()` runs inside `get_cached_dataset()`, after
-`apply_field_policy()` and before caching. This means all downstream consumers
-— `describe_dataset`, `get_data_summary`, and `execute_r` via `bs_get_dataset()`
-— see only pseudonymised IDs. The pseudonymisation is baked into the cache, so
-it is applied once per dataset per session.
+Pseudonymisation runs inside `get_cached_dataset()`, after field policy
+filtering and before caching. The server calls `bs_pseudonymise_df()` from the
+package (the same function available to regular R scripts) with the
+session-scoped key. This means all downstream consumers — `describe_dataset`,
+`get_data_summary`, and `execute_r` via `bs_get_dataset()` — see only
+pseudonymised IDs. The pseudonymisation is baked into the cache, so it is
+applied once per dataset per session.
 
 ### Combined effect with field policy
 
