@@ -1,0 +1,83 @@
+# PII Field Policy for brightspaceR MCP Server
+# Controls which columns are exposed to the AI model per dataset.
+#
+# Modes:
+#   allow  - only listed fields pass through (PII columns excluded)
+#   redact - listed fields have values replaced with [REDACTED]
+#   all    - all columns pass through unchanged
+#
+# Unknown datasets not listed here pass through with a warning.
+
+Users:
+  mode: allow
+  fields: [UserId, Organization, IsActive, SignupDate, FirstLoginDate, LastAccessed, Version, OrgRoleId]
+  # Hidden: UserName, FirstName, MiddleName, LastName, ExternalEmail, OrgDefinedId
+
+User Enrollments:
+  mode: all
+
+Grade Results:
+  mode: allow
+  fields: [GradeObjectId, OrgUnitId, UserId, PointsNumerator, PointsDenominator,
+           WeightedNumerator, WeightedDenominator, GradeText, IsReleased, IsDropped,
+           LastModified, LastModifiedBy, GradeReleasedDate, Version, IsDeleted]
+  # Hidden: Comments, PrivateComments
+
+Assignment Submissions:
+  mode: allow
+  fields: [DropboxId, OrgUnitId, SubmitterId, SubmitterType, Score, IsGraded,
+           FileSubmissionCount, TotalFileSize, FeedbackIsRead, LastSubmissionDate,
+           FeedbackLastModified, FeedbackReadDate, CompletionDate, IsDeleted, Version]
+  # Hidden: Feedback, FeedbackUserId
+
+Quiz User Answers:
+  mode: allow
+  fields: [AttemptId, QuestionId, QuestionVersionId, TimeCompleted, QuestionNumber,
+           SortOrder, Score, Page, SectionId, ObjectId, OutOf, TimeStarted, IsBonus,
+           IsDeleted, LastModified, QuizTimeCompleted]
+  # Hidden: Comment, LastModifiedBy
+
+Org Units:
+  mode: all
+
+Org Unit Types:
+  mode: all
+
+Organizational Unit Ancestors:
+  mode: all
+
+Role Details:
+  mode: all
+
+Course Offerings:
+  mode: all
+
+Grade Objects:
+  mode: all
+
+Content Objects:
+  mode: all
+
+Content User Progress:
+  mode: all
+
+Quiz Attempts:
+  mode: all
+
+Discussion Topics:
+  mode: all
+
+Discussion Posts:
+  mode: all
+
+Attendance Registers:
+  mode: all
+
+Attendance Records:
+  mode: all
+
+Enrollments and Withdrawals:
+  mode: all
+
+Final Grades:
+  mode: all

@@ -126,8 +126,8 @@ SERVER_INSTRUCTIONS <- paste0(
   "2. Extract vectors: labels <- df$col_name, values <- df$count\n",
   "3. Build an HTML string using paste0() with Chart.js from CDN:\n",
   "   https://cdn.jsdelivr.net/npm/chart.js\n",
-  "4. Write with writeLines(html, file.path('", MCP_OUTPUT_DIR, "', 'chart_name.html'))\n",
-  "5. Open with browseURL()\n\n",
+  "4. Write with write_chart(html, 'chart_name.html') -- saves to output dir safely\n",
+  "5. Open with browseURL(file.path(output_dir, 'chart_name.html'))\n\n",
   "### Static charts (fallback)\n",
   "Use ggplot2 only when the user requests a PNG or a chart type Chart.js cannot handle.\n",
   "Return a ggplot object (do NOT use ggsave). The server saves PNG + HTML viewer.\n\n",
@@ -136,7 +136,12 @@ SERVER_INSTRUCTIONS <- paste0(
   "Convert to Date with as.Date(floor_date(...)) first -- then width = 28 means 28 days.\n\n",
   "## Available packages\n",
   "tidyverse (dplyr, ggplot2, lubridate, tidyr), scales.\n",
-  "plotly is NOT available. Use Chart.js HTML for interactive output."
+  "plotly is NOT available. Use Chart.js HTML for interactive output.\n\n",
+  "## Safety Policy\n",
+  "Code is inspected before execution. Blocked: direct API access (brightspaceR::,\n",
+  "httr::, curl::), file I/O (readLines, writeLines, readRDS, etc.), shell commands\n",
+  "(system, system2), network functions (download.file, url), and metaprogramming\n",
+  "(eval, do.call, get). Use write_chart() for HTML output. Use bs_get_dataset() for data."
 )
 
 # ── 3. Tool Definitions ─────────────────────────────────────────────────────
@@ -187,7 +192,7 @@ mcp_tools <- list(
       "plotly is NOT available. ",
       "Use bs_get_dataset('Name') to load data. Variables persist between calls. ",
       "For charts: PREFER interactive Chart.js HTML (build HTML string with CDN script, ",
-      "writeLines() to output_dir, browseURL()). ",
+      "write_chart(html, 'name.html'), browseURL()). ",
       "Fall back to static ggplot only if user requests PNG or chart type is unsupported. ",
       "For ggplot: return the object (do NOT use ggsave) -- the server saves PNG + HTML."
     ),
@@ -244,7 +249,81 @@ mcp_tools <- list(
   )
 )
 
-# ── 4. Dataset Cache ────────────────────────────────────────────────────────
+# ── 4. PII Field Policy ────────────────────────────────────────────────────
+
+.field_policy_cache <- new.env(parent = emptyenv())
+.field_policy_cache$policy <- NULL
+
+load_field_policy <- function() {
+  if (!is.null(.field_policy_cache$policy)) return(.field_policy_cache$policy)
+
+  # Resolution order: env var -> cwd -> package bundled
+  candidates <- c(
+    Sys.getenv("BRIGHTSPACER_FIELD_POLICY", ""),
+    file.path(getwd(), "field_policy.yml"),
+    system.file("mcp", "field_policy.yml", package = "brightspaceR")
+  )
+  # In dev mode, also check relative to pkg_root
+  if (nchar(pkg_root) > 0) {
+    candidates <- c(candidates,
+                    file.path(pkg_root, "inst", "mcp", "field_policy.yml"))
+  }
+  candidates <- candidates[nchar(candidates) > 0]
+
+  for (path in candidates) {
+    if (file.exists(path)) {
+      mcp_log("Loading field policy from: ", path)
+      policy <- yaml::read_yaml(path)
+      .field_policy_cache$policy <- policy
+      return(policy)
+    }
+  }
+
+  mcp_log("WARNING: No field_policy.yml found, all fields pass through")
+  .field_policy_cache$policy <- list()
+  list()
+}
+
+apply_field_policy <- function(df, dataset_name) {
+  policy <- load_field_policy()
+  ds_policy <- policy[[dataset_name]]
+
+  if (is.null(ds_policy)) {
+    # Unknown dataset — pass through with warning
+    mcp_log("Field policy: no entry for '", dataset_name, "', passing through")
+    return(df)
+  }
+
+  mode <- ds_policy$mode
+  if (is.null(mode) || mode == "all") {
+    return(df)
+  }
+
+  if (mode == "allow") {
+    allowed <- ds_policy$fields
+    if (is.null(allowed)) return(df)
+    keep <- intersect(allowed, names(df))
+    return(df[, keep, drop = FALSE])
+  }
+
+  if (mode == "redact") {
+    redact_cols <- ds_policy$fields
+    if (!is.null(redact_cols)) {
+      for (col in redact_cols) {
+        if (col %in% names(df)) {
+          df[[col]] <- "[REDACTED]"
+        }
+      }
+    }
+    return(df)
+  }
+
+  # Unknown mode — pass through
+  mcp_log("Field policy: unknown mode '", mode, "' for '", dataset_name, "'")
+  df
+}
+
+# ── 5. Dataset Cache ────────────────────────────────────────────────────────
 
 .cache <- new.env(parent = emptyenv())
 .cache$datasets <- new.env(parent = emptyenv())
@@ -279,6 +358,8 @@ get_cached_dataset <- function(name) {
     return(get(key, envir = .cache$datasets))
   }
   ds <- suppressMessages(bs_get_dataset(name))
+  # Apply PII field policy before caching
+  ds <- apply_field_policy(ds, name)
   assign(key, ds, envir = .cache$datasets)
   ds
 }
@@ -399,7 +480,82 @@ make_result <- function(content, is_error = FALSE) {
   mcp_result(content, is_error = is_error)
 }
 
-# ── 6. Persistent Workspace ──────────────────────────────────────────────────
+# ── 6. AST Code Inspection ───────────────────────────────────────────────────
+
+BLOCKED_PACKAGES <- c("brightspaceR", "httr", "httr2", "curl", "jsonlite", "config")
+
+BLOCKED_FUNCTIONS <- c(
+  # Metaprogramming
+  "eval", "evalq", "do.call", "get", "mget", "exists", "match.fun",
+  "getExportedValue", "loadNamespace", "requireNamespace",
+  # Environment
+  "Sys.getenv", "Sys.setenv",
+  # Shell
+  "system", "system2", "shell",
+  # File I/O
+  "readLines", "scan", "file", "readRDS", "writeLines",
+  "write.csv", "write.csv2", "saveRDS",
+  # Network
+  "download.file", "url", "socketConnection"
+)
+
+# Recursively walk an AST expression and collect blocked constructs
+walk_ast <- function(expr, blocked = character(0)) {
+  if (is.call(expr)) {
+    fn <- expr[[1]]
+
+    # Check for pkg::fn or pkg:::fn calls
+    if (is.call(fn) && length(fn) == 3 &&
+        (identical(fn[[1]], as.name("::")) || identical(fn[[1]], as.name(":::")))) {
+      pkg_name <- as.character(fn[[2]])
+      if (pkg_name %in% BLOCKED_PACKAGES) {
+        blocked <- c(blocked, paste0(pkg_name, "::", as.character(fn[[3]])))
+      }
+    } else if (is.name(fn)) {
+      fn_name <- as.character(fn)
+      if (fn_name %in% BLOCKED_FUNCTIONS) {
+        blocked <- c(blocked, fn_name)
+      }
+      # Also check compound names like Sys.getenv (parsed as single symbol)
+    } else if (is.call(fn) && length(fn) == 3 && identical(fn[[1]], as.name("$"))) {
+      # Handles Sys$getenv style (unlikely but defensive)
+      compound <- paste0(as.character(fn[[2]]), "$", as.character(fn[[3]]))
+      if (compound %in% BLOCKED_FUNCTIONS) {
+        blocked <- c(blocked, compound)
+      }
+    }
+
+    # Recurse into all arguments
+    for (i in seq_along(expr)) {
+      blocked <- walk_ast(expr[[i]], blocked)
+    }
+  } else if (is.pairlist(expr) || (is.recursive(expr) && !is.environment(expr))) {
+    for (i in seq_along(expr)) {
+      blocked <- walk_ast(expr[[i]], blocked)
+    }
+  }
+  blocked
+}
+
+check_code_safety <- function(code) {
+  parsed <- tryCatch(parse(text = code), error = function(e) NULL)
+  # Syntax errors pass through — they'll fail at eval anyway
+  if (is.null(parsed)) return(list(safe = TRUE))
+
+  blocked <- character(0)
+  for (i in seq_along(parsed)) {
+    blocked <- walk_ast(parsed[[i]], blocked)
+  }
+  blocked <- unique(blocked)
+
+  if (length(blocked) == 0) {
+    list(safe = TRUE)
+  } else {
+    list(safe = FALSE, blocked = blocked)
+  }
+}
+
+# ── 7. Persistent Workspace ──────────────────────────────────────────────────
 
 .mcp_workspace <- new.env(parent = globalenv())
 
@@ -416,6 +572,19 @@ local({
 
 # Expose output directory so execute_r code can write Chart.js HTML there
 .mcp_workspace$output_dir <- MCP_OUTPUT_DIR
+
+# Safe Chart.js HTML writer — only writes .html to MCP_OUTPUT_DIR
+.mcp_workspace$write_chart <- function(html_string, filename) {
+  if (!is.character(filename) || length(filename) != 1 || !grepl("\\.html$", filename)) {
+    stop("write_chart: filename must be a single string ending in .html")
+  }
+  # Strip any path components — only bare filename allowed
+  filename <- basename(filename)
+  path <- file.path(MCP_OUTPUT_DIR, filename)
+  writeLines(html_string, path)
+  message(paste0("[Chart written: ", path, "]"))
+  invisible(path)
+}
 
 # Wire in bs_get_dataset with row-count reporting so Claude always sees data size
 .mcp_workspace$bs_get_dataset <- function(name, ...) {
@@ -560,6 +729,20 @@ handle_execute_r <- function(args) {
   }
 
   mcp_log("execute_r code: ", substr(code, 1, 200))
+
+  # AST safety check — reject dangerous constructs before execution
+  safety <- check_code_safety(code)
+  if (!safety$safe) {
+    mcp_log("BLOCKED code: ", paste(safety$blocked, collapse = ", "))
+    return(mcp_result(
+      list(mcp_text(paste0(
+        "Code blocked by safety policy. The following constructs are not allowed:\n",
+        paste0("- ", safety$blocked, collapse = "\n"),
+        "\n\nUse the provided workspace functions (bs_get_dataset, write_chart, etc.) instead."
+      ))),
+      is_error = TRUE
+    ))
+  }
 
   # Use an environment to store results reliably across nested scopes
   .res <- new.env(parent = emptyenv())
@@ -833,7 +1016,52 @@ tool_handlers <- list(
   list_schemas = handle_list_schemas
 )
 
-# ── 9. JSON-RPC Dispatch ────────────────────────────────────────────────────
+# ── 9. Audit Logging ─────────────────────────────────────────────────────────
+
+AUDIT_LOG_PATH <- file.path(MCP_OUTPUT_DIR, "mcp_audit.jsonl")
+
+audit_log <- function(tool, arguments = NULL, response_bytes = 0L,
+                      code_blocked = FALSE, blocked_constructs = NULL,
+                      is_error = FALSE) {
+  entry <- list(
+    timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3Z", tz = "UTC"),
+    tool = tool
+  )
+
+  if (!is.null(arguments)) {
+    # Truncate code argument to 500 chars for log readability
+    args_copy <- arguments
+    if (!is.null(args_copy$code) && nchar(args_copy$code) > 500) {
+      args_copy$code <- paste0(substr(args_copy$code, 1, 500), "...[truncated]")
+    }
+    entry$arguments <- args_copy
+  }
+
+  entry$response_bytes <- as.integer(response_bytes)
+  entry$code_blocked <- code_blocked
+  if (!is.null(blocked_constructs) && length(blocked_constructs) > 0) {
+    entry$blocked_constructs <- as.list(blocked_constructs)
+  }
+  entry$is_error <- is_error
+
+  line <- tryCatch(
+    as.character(to_json(entry)),
+    error = function(e) {
+      # Fallback: minimal entry on serialization failure
+      paste0('{"timestamp":"', entry$timestamp, '","tool":"', tool,
+             '","error":"audit serialization failed"}')
+    }
+  )
+
+  tryCatch(
+    cat(line, "\n", sep = "", file = AUDIT_LOG_PATH, append = TRUE),
+    error = function(e) {
+      mcp_log("WARNING: Could not write audit log: ", conditionMessage(e))
+    }
+  )
+}
+
+# ── 10. JSON-RPC Dispatch ───────────────────────────────────────────────────
 
 handle_request <- function(request) {
   method <- request$method
@@ -876,6 +1104,7 @@ handle_request <- function(request) {
 
     handler <- tool_handlers[[tool_name]]
     if (is.null(handler)) {
+      audit_log(tool_name %||% "unknown", arguments = arguments, is_error = TRUE)
       return(list(
         jsonrpc = "2.0",
         id = id,
@@ -897,6 +1126,23 @@ handle_request <- function(request) {
           is_error = TRUE
         )
       }
+    )
+
+    # Audit log after handler returns
+    result_json <- tryCatch(as.character(to_json(result)), error = function(e) "")
+    is_blocked <- isTRUE(result$isError) && tool_name == "execute_r" &&
+      any(grepl("Code blocked by safety policy", vapply(result$content, function(c) c$text %||% "", character(1))))
+    blocked_items <- if (is_blocked) {
+      safety <- check_code_safety(arguments$code %||% "")
+      if (!safety$safe) safety$blocked else NULL
+    } else NULL
+    audit_log(
+      tool = tool_name,
+      arguments = arguments,
+      response_bytes = nchar(result_json, type = "bytes"),
+      code_blocked = is_blocked,
+      blocked_constructs = blocked_items,
+      is_error = isTRUE(result$isError)
     )
 
     return(list(
@@ -941,6 +1187,7 @@ tryCatch(
 # ── 11. Main Loop ────────────────────────────────────────────────────────────
 
 mcp_log("Server started. Listening on stdin...")
+audit_log("session_start")
 
 stdin_con <- file("stdin", open = "r")
 
@@ -995,5 +1242,6 @@ repeat {
   }
 }
 
+audit_log("session_end")
 close(stdin_con)
 mcp_log("Server shut down.")

