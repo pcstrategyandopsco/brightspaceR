@@ -344,9 +344,19 @@ bs_get_dataset <- function(name, extract_type = c("full", "diff")) {
 #' @param diffs A list of tibbles from differential extracts, in chronological
 #'   order.
 #' @param dataset_name Optional dataset name used to look up key columns via
-#'   [bs_key_cols()].
+#'   [bs_key_cols()]. Strongly recommended: without it (or without a registered
+#'   schema) the key columns are guessed from `_id` columns, which can silently
+#'   drop rows for datasets whose grain includes a non-id column such as a date
+#'   or timestamp (e.g. Course Access). A warning is emitted whenever keys are
+#'   guessed.
 #' @param keep_deleted If `FALSE` (default), rows where `is_deleted` is `TRUE`
 #'   are removed from the final result.
+#'
+#' @details
+#' If a differential extract shares no key column with the accumulated result,
+#' the merge would silently drop or duplicate that diff's rows, so this function
+#' errors instead. If a diff is missing some (but not all) key columns, it merges
+#' on the shared subset and warns that rows may be collapsed.
 #'
 #' @return A tibble with diffs applied.
 #' @keywords internal
@@ -360,19 +370,57 @@ bs_apply_diffs <- function(full, diffs, dataset_name = NULL, keep_deleted = FALS
     key_cols <- bs_key_cols(dataset_name)
   }
   if (is.null(key_cols)) {
-    # Auto-detect: columns ending in _id
+    # No registered schema: fall back to guessing keys from _id columns. This
+    # is fragile - datasets whose grain includes a non-id column (e.g. a date
+    # or timestamp, like Course Access) will merge on too few keys and silently
+    # collapse rows. Warn loudly so the guess is never mistaken for a
+    # schema-backed key.
     key_cols <- grep("_id$", names(full), value = TRUE)
     key_cols <- setdiff(key_cols, "is_deleted")
+    if (is.null(dataset_name)) {
+      cli_alert_warning(c(
+        "No {.arg dataset_name} supplied; guessing merge keys from ",
+        "{.code _id} columns: {.val {key_cols}}. Datasets whose grain ",
+        "includes a non-id column (a date or timestamp) can silently lose ",
+        "rows. Pass {.arg dataset_name} so registered key columns are used."
+      ))
+    } else {
+      cli_alert_warning(c(
+        "No schema registered for {.val {dataset_name}}; guessing merge keys ",
+        "from {.code _id} columns: {.val {key_cols}}. If this dataset's true ",
+        "grain includes a non-id column, rows may be lost. Add a schema entry ",
+        "with the correct {.code key_cols}."
+      ))
+    }
   }
   if (length(key_cols) == 0) {
     abort("Cannot determine key columns for merging. Provide `dataset_name`.")
   }
 
   result <- full
-  for (diff in diffs) {
+  for (i in seq_along(diffs)) {
+    diff <- diffs[[i]]
     # Only use key columns that exist in both datasets
     common_keys <- intersect(key_cols, intersect(names(result), names(diff)))
-    if (length(common_keys) == 0) next
+    if (length(common_keys) == 0) {
+      # Merging with no shared key would upsert every diff row as a brand-new
+      # row (or drop them). Never do this silently - it is the exact failure
+      # that made full datasets miss differential data.
+      abort(c(
+        "Cannot merge differential extract {i}: no key column is present in both extracts.",
+        i = "Expected key column{?s}: {.val {key_cols}}.",
+        i = "Columns available in the diff: {.val {names(diff)}}.",
+        x = "Merging with no shared key would silently drop or duplicate rows."
+      ))
+    }
+    if (!setequal(common_keys, key_cols)) {
+      missing <- setdiff(key_cols, common_keys)
+      cli_alert_warning(c(
+        "Differential extract {i} is missing key column{?s} {.val {missing}}; ",
+        "merging on {.val {common_keys}} only. Rows that differ only by the ",
+        "missing key column{?s} may be collapsed."
+      ))
+    }
     # Align diff column types to match full (e.g., character -> datetime)
     diff <- align_col_types(diff, result)
     # Deduplicate: keep last occurrence per key (most recent update wins)

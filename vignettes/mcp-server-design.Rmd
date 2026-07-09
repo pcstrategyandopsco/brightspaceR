@@ -478,6 +478,8 @@ join and filter on them.
 | Enrollments and Withdrawals | UserId, ModifiedByUserId |
 | Final Grades | UserId |
 | Attendance Records | UserId |
+| Course Access | UserId |
+| Course Access Log | UserId |
 
 Some of these columns may already be dropped by the field policy (e.g.,
 FeedbackUserId in Assignment Submissions). The pseudonymisation function silently

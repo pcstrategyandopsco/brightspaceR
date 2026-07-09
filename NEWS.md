@@ -1,5 +1,31 @@
 # brightspaceR 0.1.0.9000
 
+## Differential Merge Fixes
+
+* **Course Access / Course Access Log schemas added.** These datasets are
+  keyed on a date/timestamp (`DayAccessed`, `Timestamp`) in addition to
+  `OrgUnitId`/`UserId`. Without a registered schema, `bs_apply_diffs()` guessed
+  merge keys from `_id` columns only and silently collapsed every day's rows
+  into one — so merged (full + differential) results were missing rows that the
+  differential extracts contained. Their `UserId` columns are also now
+  pseudonymised by the privacy layer.
+* **`bs_apply_diffs()` no longer loses rows silently.** When a differential
+  extract shares no key column with the accumulated result it now errors
+  instead of skipping the diff; when it is missing some key columns it merges
+  on the shared subset and warns. Guessing keys from `_id` columns (no
+  `dataset_name` or no registered schema) now emits a warning.
+
+## Privacy Layer Fixes
+
+* **`bs_pseudonymise_df()` and `bs_apply_field_policy()` now work on real
+  data.** Both matched their PascalCase registry/policy field names (e.g.
+  `UserId`) against the **snake_case** columns that `bs_get_dataset()` actually
+  returns (`user_id`), so on live data pseudonymisation was a silent no-op and
+  `allow`-mode field policies dropped every column. Matching is now
+  snake_case-normalised on both sides. The MCP server (which delegates to these
+  functions) is fixed as a result. Regression tests now exercise the real
+  snake_case column names.
+
 ## Exported Privacy Functions
 
 * Exported `bs_pseudonymise_id()`, `bs_pseudonymise_df()`, and

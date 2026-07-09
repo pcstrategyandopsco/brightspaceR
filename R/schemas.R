@@ -522,6 +522,40 @@ bs_schemas <- list(
     date_cols = c("LastModified"),
     bool_cols = c("IsReleased"),
     key_cols = c("OrgUnitId", "UserId")
+  ),
+
+  # 21. Course Access
+  # Grain: one record per user, per course, per day. The day itself
+  # (DayAccessed) is part of the primary key, so it MUST be a merge key -
+  # otherwise every day's access for a user/course collapses to one row and
+  # differential rows are silently lost.
+  course_access = list(
+    col_types = readr::cols(
+      OrgUnitId = readr::col_integer(),
+      UserId = readr::col_integer(),
+      DayAccessed = readr::col_character(),
+      .default = readr::col_character()
+    ),
+    date_cols = c("DayAccessed"),
+    bool_cols = character(),
+    key_cols = c("OrgUnitId", "UserId", "DayAccessed")
+  ),
+
+  # 22. Course Access Log
+  # Grain: one record per course-access event. Multiple events can occur on
+  # the same day, distinguished by Timestamp (and Source), so both are part
+  # of the primary key.
+  course_access_log = list(
+    col_types = readr::cols(
+      OrgUnitId = readr::col_integer(),
+      UserId = readr::col_integer(),
+      Timestamp = readr::col_character(),
+      Source = readr::col_character(),
+      .default = readr::col_character()
+    ),
+    date_cols = c("Timestamp"),
+    bool_cols = character(),
+    key_cols = c("OrgUnitId", "UserId", "Timestamp", "Source")
   )
 )
 

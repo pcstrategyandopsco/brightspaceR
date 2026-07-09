@@ -5,7 +5,7 @@
 \alias{bs_schemas}
 \title{BDS Dataset Schema Registry}
 \format{
-An object of class \code{list} of length 20.
+An object of class \code{list} of length 22.
 }
 \usage{
 bs_schemas

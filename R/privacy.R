@@ -16,7 +16,9 @@ PERSON_ID_COLUMNS <- list(
   "Grade Objects"                = c("DeletedByUserId"),
   "Enrollments and Withdrawals"  = c("UserId", "ModifiedByUserId"),
   "Final Grades"                 = c("UserId"),
-  "Attendance Records"           = c("UserId")
+  "Attendance Records"           = c("UserId"),
+  "Course Access"                = c("UserId"),
+  "Course Access Log"            = c("UserId")
 )
 
 #' Pseudonymise a vector of IDs
@@ -79,9 +81,14 @@ bs_pseudonymise_id <- function(values, key) {
 bs_pseudonymise_df <- function(df, dataset_name, key, columns = NULL) {
   cols <- columns %||% PERSON_ID_COLUMNS[[dataset_name]]
   if (is.null(cols)) return(df)
-  for (col in cols) {
-    if (col %in% names(df)) {
-      df[[col]] <- bs_pseudonymise_id(df[[col]], key = key)
+  # Match by snake_case so registry names (e.g. "UserId") line up with the
+  # snake_case columns that bs_get_dataset() actually returns ("user_id").
+  # Without this the function is a silent no-op on real data.
+  df_snake <- to_snake_case(names(df))
+  target <- to_snake_case(cols)
+  for (t in target) {
+    for (h in which(df_snake == t)) {
+      df[[h]] <- bs_pseudonymise_id(df[[h]], key = key)
     }
   }
   df
@@ -133,20 +140,25 @@ bs_apply_field_policy <- function(df, dataset_name, policy = NULL) {
   mode <- ds_policy$mode
   if (is.null(mode) || mode == "all") return(df)
 
+  # Match by snake_case so PascalCase policy field names (e.g. "UserId") line
+  # up with the snake_case columns bs_get_dataset() returns ("user_id").
+  # Without this, `allow` mode would drop every column and `redact` would
+  # redact nothing on real data.
+  df_snake <- to_snake_case(names(df))
+
   if (mode == "allow") {
     allowed <- ds_policy$fields
     if (is.null(allowed)) return(df)
-    keep <- intersect(allowed, names(df))
+    keep <- names(df)[df_snake %in% to_snake_case(allowed)]
     return(df[, keep, drop = FALSE])
   }
 
   if (mode == "redact") {
     redact_cols <- ds_policy$fields
     if (!is.null(redact_cols)) {
-      for (col in redact_cols) {
-        if (col %in% names(df)) {
-          df[[col]] <- "[REDACTED]"
-        }
+      redact_snake <- to_snake_case(redact_cols)
+      for (nm in names(df)[df_snake %in% redact_snake]) {
+        df[[nm]] <- "[REDACTED]"
       }
     }
     return(df)

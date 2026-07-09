@@ -13,7 +13,11 @@ bs_apply_diffs(full, diffs, dataset_name = NULL, keep_deleted = FALSE)
 order.}
 
 \item{dataset_name}{Optional dataset name used to look up key columns via
-\code{\link[=bs_key_cols]{bs_key_cols()}}.}
+\code{\link[=bs_key_cols]{bs_key_cols()}}. Strongly recommended: without it (or without a registered
+schema) the key columns are guessed from \verb{_id} columns, which can silently
+drop rows for datasets whose grain includes a non-id column such as a date
+or timestamp (e.g. Course Access). A warning is emitted whenever keys are
+guessed.}
 
 \item{keep_deleted}{If \code{FALSE} (default), rows where \code{is_deleted} is \code{TRUE}
 are removed from the final result.}
@@ -24,5 +28,11 @@ A tibble with diffs applied.
 \description{
 Applies one or more differential extracts on top of a full extract using
 upsert logic keyed by the dataset's primary key columns.
+}
+\details{
+If a differential extract shares no key column with the accumulated result,
+the merge would silently drop or duplicate that diff's rows, so this function
+errors instead. If a diff is missing some (but not all) key columns, it merges
+on the shared subset and warns that rows may be collapsed.
 }
 \keyword{internal}

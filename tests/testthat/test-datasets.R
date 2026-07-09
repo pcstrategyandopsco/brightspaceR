@@ -109,6 +109,44 @@ test_that("bs_apply_diffs auto-detects _id columns when no dataset_name", {
   expect_equal(result$title[result$org_unit_id == 1L], "X_updated")
 })
 
+test_that("bs_apply_diffs errors when a diff shares no key column", {
+  full <- tibble::tibble(user_id = 1:3, name = c("A", "B", "C"))
+  # diff has no *_id column in common -> merging would silently drop its rows
+  diff <- tibble::tibble(other_key = 9L, name = "Z")
+  expect_error(
+    bs_apply_diffs(full, list(diff)),
+    "no key column is present in both"
+  )
+})
+
+test_that("bs_apply_diffs warns when guessing keys without dataset_name", {
+  full <- tibble::tibble(org_unit_id = 1:2, title = c("X", "Y"))
+  diff <- tibble::tibble(org_unit_id = 1L, title = "X_updated")
+  expect_message(bs_apply_diffs(full, list(diff)), "guessing merge keys")
+})
+
+test_that("Course Access schema keys on the day, preserving per-day rows", {
+  keys <- bs_key_cols("Course Access")
+  expect_setequal(keys, c("org_unit_id", "user_id", "day_accessed"))
+
+  # Two accesses by the same user/course on different days must both survive.
+  full <- tibble::tibble(
+    org_unit_id = c(100L, 100L),
+    user_id = c(5L, 5L),
+    day_accessed = as.POSIXct(c("2025-01-01", "2025-01-02"), tz = "UTC"),
+    dummy = c("a", "b")
+  )
+  diff <- tibble::tibble(
+    org_unit_id = 100L,
+    user_id = 5L,
+    day_accessed = as.POSIXct("2025-01-03", tz = "UTC"),
+    dummy = "c"
+  )
+  result <- bs_apply_diffs(full, list(diff), dataset_name = "Course Access")
+  expect_equal(nrow(result), 3)
+  expect_true(as.POSIXct("2025-01-03", tz = "UTC") %in% result$day_accessed)
+})
+
 test_that("bs_apply_diffs returns full unchanged with empty diffs", {
   full <- tibble::tibble(user_id = 1:3, name = c("A", "B", "C"))
   result <- bs_apply_diffs(full, list())

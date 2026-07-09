@@ -844,10 +844,23 @@ PERSON_ID_COLUMNS <- list(
   "Grade Objects"                = c("DeletedByUserId"),
   "Enrollments and Withdrawals"  = c("UserId", "ModifiedByUserId"),
   "Final Grades"                 = c("UserId"),
-  "Attendance Records"           = c("UserId")
+  "Attendance Records"           = c("UserId"),
+  "Course Access"                = c("UserId"),
+  "Course Access Log"            = c("UserId")
 )
 
 .test_pseudonym_key <- openssl::rand_bytes(32)
+
+# Local mirror of brightspaceR::to_snake_case — registry names are PascalCase
+# but real datasets arrive snake_case; matching must normalise both sides.
+to_snake_case <- function(x) {
+  x <- gsub("\\s+", "_", x)
+  x <- gsub("([a-z])([A-Z])", "\\1_\\2", x)
+  x <- gsub("([A-Z]+)([A-Z][a-z])", "\\1_\\2", x)
+  x <- tolower(x)
+  x <- gsub("_+", "_", x)
+  gsub("^_|_$", "", x)
+}
 
 pseudonymise_id <- function(values, key) {
   result <- rep(NA_character_, length(values))
@@ -865,9 +878,11 @@ pseudonymise_id <- function(values, key) {
 pseudonymise_df <- function(df, dataset_name, key, columns = NULL) {
   cols <- if (!is.null(columns)) columns else PERSON_ID_COLUMNS[[dataset_name]]
   if (is.null(cols)) return(df)
-  for (col in cols) {
-    if (col %in% names(df)) {
-      df[[col]] <- pseudonymise_id(df[[col]], key = key)
+  df_snake <- to_snake_case(names(df))
+  target <- to_snake_case(cols)
+  for (t in target) {
+    for (h in which(df_snake == t)) {
+      df[[h]] <- pseudonymise_id(df[[h]], key = key)
     }
   }
   df
@@ -906,6 +921,15 @@ test("pseudonymise_df: structural IDs untouched — OrgUnitId stays numeric", {
   df <- data.frame(UserId = 1L, OrgUnitId = 999L, stringsAsFactors = FALSE)
   result <- pseudonymise_df(df, "User Enrollments", key = .test_pseudonym_key)
   grepl("^usr_", result$UserId) && is.integer(result$OrgUnitId) && result$OrgUnitId == 999L
+})
+
+test("pseudonymise_df: real snake_case columns (user_id) are pseudonymised", {
+  # bs_get_dataset() returns snake_case; registry is PascalCase. This is the
+  # case the PascalCase-only tests above miss.
+  df <- data.frame(user_id = c(100L, 200L), org_unit_id = c(10L, 20L),
+                   stringsAsFactors = FALSE)
+  result <- pseudonymise_df(df, "Users", key = .test_pseudonym_key)
+  all(grepl("^usr_", result$user_id)) && identical(result$org_unit_id, df$org_unit_id)
 })
 
 test("pseudonymise_df: unknown dataset passthrough", {
